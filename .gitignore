@@ -1,0 +1,59 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+bugs/
+plans/
+
+# Test / Coverage
+.coverage
+coverage.xml
+htmlcov/
+.pytest_cache/
+
+# Real config files (use *.example as template)
+config/rehearsal.jsonc
+config/formal.jsonc
+
+# U-06: 配置写回产生的备份与 sidecar 锁文件
+mobile/*.jsonc.bak
+mobile/*.jsonc.lock
+
+# Local debug artifacts
+tmp/
+tmp_*.png
+tmp_*.xml
+mobile/tmp_*.png
+mobile/tmp_*.xml
+
+# Internal R&D PM workspace (not for public consumption)
+reference/
+
+# Local, non-committed Claude Code project memory (auto-loaded; overrides/augments CLAUDE.md)
+CLAUDE.local.md

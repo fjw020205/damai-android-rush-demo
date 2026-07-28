@@ -1,0 +1,23 @@
+{
+  // 一台已授权手机时填 null；多台手机时填 check-device.bat 显示的序列号。
+  "serial": null,
+  "keyword": "目标演出关键词",
+  "target_title": null,
+  "target_venue": null,
+  "users": ["观演人一", "观演人二"],
+  "city": "演出城市",
+  "date": "场次日期",
+  "session_index": 0,
+  "price": "票档原文",
+  "price_index": 0,
+  "probe_only": false,
+  "if_commit_order": true,
+  "skip_attendee_selection": false,
+  "skip_quantity_adjustment": true,
+  "auto_navigate": false,
+  "sell_start_time": null,
+  "rush_mode": true,
+  "rush_skip_price_dump": true,
+  "fast_retry_count": 1,
+  "fast_retry_interval_ms": 80
+}

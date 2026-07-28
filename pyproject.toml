@@ -1,0 +1,20 @@
+[tool.poetry]
+name = "damai-android-rush-demo"
+version = "0.1.0"
+description = "Minimal Android UIAutomator2 demo for a Damai purchase flow"
+authors = ["jdong6389-crypto"]
+readme = "README.md"
+packages = [
+    { include = "mobile" },
+    { include = "shared" }
+]
+
+[tool.poetry.dependencies]
+python = ">=3.8,<3.14"
+selenium = ">=4.22.0,<4.28"
+uiautomator2 = "^3.2"
+adbutils = "^2.9"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

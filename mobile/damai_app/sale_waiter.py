@@ -172,17 +172,16 @@ class SaleWaiterMixin:
                 break
             polls += 1
 
-            # (0) Canvas 自绘 CTA 快路径（大麦 ≥9.0.2x，issue #41 核心+收尾）：
-            #     开售前只做 ~20ms 短睡、绝不做任何 u2 文案查询（get_current_text
-            #     对纯 Canvas 容器要遍历子树 ~1s，恒返回 None，每轮查询只会把开抢
-            #     时刻整体拖后 ~1 个周期）；到点即按候选 resource-id 中心坐标兜底
-            #     返回，点击交给下游 _enter_purchase_flow_from_detail_page 的容器
-            #     ID/坐标路径（预约风险由 SKU 页 reservation_mode 检测兜底）。置于
-            #     文案查询之前，把开抢延迟从 ~1 个 u2 查询周期收紧到一个短睡间隔。
+            # 严格定时门：配置 sell_start_time 时，任何 CTA 文案或结构信号都不能
+            # 提前放行。否则把未来时刻用于普通可购页演练时，"立即购买" 会绕过
+            # Canvas 分支而在目标时间前触发，既污染定时测试也违背配置语义。
+            if now < sell_time:
+                time.sleep(0.02)
+                continue
+
+            # (0) Canvas 自绘 CTA 快路径（大麦 >=9.0.2x）：到点即按候选
+            # resource-id 中心坐标派发，避免一轮完整 UI 查询拖慢开售首击。
             if canvas_cta and not saw_cta_text:
-                if now < sell_time:
-                    time.sleep(0.02)
-                    continue
                 if self._dispatch_sale_cta(canvas_coords):
                     log_event(
                         logger,

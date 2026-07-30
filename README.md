@@ -19,10 +19,21 @@
 
 ## 下载和安装
 
-1. 在 GitHub 点 **Code → Download ZIP**，解压到固定目录。
-2. 双击 `setup.bat`，等待安装完成。
-3. 打开手机的开发者选项和 USB 调试，再用数据线连接电脑。
-4. 手机上出现授权弹窗时点允许；只有一台手机时 `serial` 保持 `null`。
+### 不用终端
+
+1. 打开项目的 [GitHub 页面](https://github.com/jdong6389-crypto/damai-android-rush-demo)。
+2. 点击绿色 **Code**，再点击 **Download ZIP**。
+3. 浏览器下载完成后，在“下载”文件夹里找到 `damai-android-rush-demo-main.zip`。
+4. 右键 ZIP，选择“全部解压”，解压到一个固定目录，例如 `D:\Tools\damai-android-rush-demo`。
+5. 打开解压后的项目根目录，确认能看到 `setup.bat`、`start.bat` 和 `config` 文件夹。
+6. 双击 `setup.bat`，等待安装完成。
+
+也可以在 VS Code 中选择 **Clone Repository**，粘贴仓库地址后直接打开项目。不要只打开 ZIP 预览窗口，批处理文件必须在解压后的目录中运行。
+
+### 连接手机
+
+1. 打开手机的开发者选项和 USB 调试，再用数据线连接电脑。
+2. 手机上出现授权弹窗时点允许；只有一台手机时 `serial` 保持 `null`。
 
 开发者选项在不同品牌里藏得不一样，没搜到不代表手机不支持。先看[安卓开发者选项和 USB 调试说明](docs/android-usb-debugging.md)。
 
@@ -60,6 +71,7 @@
 ## 文档
 
 - [快速开始](docs/quick-start.md)
+- [给 AI 协助安装的说明](docs/ai-quick-start.md)
 - [配置说明](docs/configuration.md)
 - [正式开抢前准备](docs/pre-sale-checklist.md)
 - [故障排查](docs/troubleshooting.md)

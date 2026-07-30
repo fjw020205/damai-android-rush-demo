@@ -28,10 +28,12 @@
 
 ## 配置
 
-先复制对应模板，去掉 `.example` 后再编辑：
+先复制对应模板，再把副本另存为不带 `.example` 的文件名：
 
 - 额外选择型：`config/rehearsal.jsonc.example` → `config/rehearsal.jsonc`；正式时再复制为 `config/formal.jsonc`。
 - 连点型：`config/preselected-rehearsal.jsonc.example` → `config/preselected-rehearsal.jsonc`；正式时再复制为 `config/preselected-formal.jsonc`。
+
+`.example` 只是模板标记，不是特殊语法。模板会上传到 GitHub，真实配置会被 `.gitignore` 排除，避免设备号和个人信息被提交；启动脚本也只读取不带 `.example` 的真实配置。
 
 配置只记三件事：
 

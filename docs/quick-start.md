@@ -12,10 +12,12 @@
 
 ## 3. 复制配置
 
-根据页面类型二选一：
+根据页面类型二选一，把模板复制成启动脚本要求的文件名：
 
 - 页面开售后还要选场次/票档：复制 `config/rehearsal.jsonc.example` 为 `config/rehearsal.jsonc`。
 - 预约已经锁定场次/票档：复制 `config/preselected-rehearsal.jsonc.example` 为 `config/preselected-rehearsal.jsonc`。
+
+`.example` 只是公开模板的后缀。真实配置不提交 GitHub，启动脚本也不会直接读取模板，避免把占位内容当成真实配置运行。
 
 打开配置。两种模式只改 `sell_start_time`；额外选择型再改 `session_index`、`price_index`。默认已按预约场景跳过观演人操作，只有 App 没有预选观演人时才填写 `users`。
 

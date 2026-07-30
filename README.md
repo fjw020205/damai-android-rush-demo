@@ -1,56 +1,68 @@
-# Damai Android Rush Demo
+# 大麦 Android 抢票最小示例
 
-一个面向 Android 真机的最小大麦 App 自动化示例。它只保留一条已验证的路径：从演出详情页进入购票面板，按配置选择场次和票档，选择前 N 位观演人，并在确认页停止或提交订单。
+这是我受朋友委托，对“大麦手机 App 专属购票”做的一个实操型探索项目。
 
-不支持网页端、桌面端或模拟器。支付始终由用户在手机上手动完成。
+公开项目里有些代码更像完整流程点击器，临近开售时还要搜索、识别和导航，速度和稳定性都不适合临界操作。本项目把流程收窄为：用户提前登录大麦并停在目标演出详情页，脚本只负责按设定时间进入购票流程。
 
-## 使用前
+仅支持 Windows + Android 真机 + 大麦 App，不支持网页端、模拟器或自动支付。验证码、短信验证、排队和支付必须由用户在手机上完成。
 
-- Windows 10/11、Python 3.10-3.13、Android 手机和 USB 数据线。
-- 手机已登录大麦，开发者选项和 USB 调试已打开。
-- 已在 App 中添加好要使用的观演人。
-- 使用者应自行遵守平台规则、服务条款和适用法律；不要用于倒票或规避平台限制。
+## 先选脚本类型
 
-## 最短路径
+| 类型 | 适用情况 | 开售后动作 | 入口 |
+| --- | --- | --- | --- |
+| 连点型 | 预约阶段已经锁定场次和票档，开售后直接出现购买按钮 | 不识别场次和票价，直接快速连点 | `start-preselected.bat` |
+| 额外选择型 | 预约没有包含场次、票档，开售后还要选择 | 按顺序点击 `session_index` 和 `price_index`，再进入确认页 | `start.bat` |
 
-1. 在 GitHub 下载或克隆仓库后，双击 `setup.bat` 创建环境。
-2. 用数据线连接手机，在手机弹窗中允许 USB 调试；若只连接一台手机，模板中的 `serial: null` 无需修改。
-3. 复制 `config/rehearsal.jsonc.example` 为 `config/rehearsal.jsonc`，填写真实参数。
-4. 先双击 `start.bat` 做演练。它会走到确认页，但不会点击“立即提交”。
-5. 确认场次、票档和观演人顺序正确后，复制并填写 `config/formal.jsonc`，再双击 `start-formal.bat`。它会提交订单，但不会支付。
+连点型需要自己在 T0、T0+10ms、T0+20ms 之间试出适合当前手机和 App 的版本。T0 最快，但首击可能撞上页面刚切换的瞬间；10ms 或 20ms 稍晚，通常更稳。先用三个演练入口比较，再决定正式配置里的 `cta_first_tap_delay_ms`。
 
-VS Code 中按 `Ctrl+Shift+B` 运行演练；正式模式通过“Tasks: Run Task”选择“正式手机购票”。
+额外选择型不按金额或场次文字做识别，使用从 `0` 开始的可见卡片顺序。这样少一次文字读取，速度更快，但每个演出都必须先演练确认顺序。
 
-详细步骤见 [快速开始](docs/quick-start.md)。
+## 下载和安装
 
-## 两种入口
+1. 在 GitHub 点 **Code → Download ZIP**，解压到一个固定目录。
+2. 双击根目录 `setup.bat`，它会创建 `.venv` 并安装依赖。
+3. 手机打开开发者选项和 USB 调试，用数据线连接电脑，在手机上允许 USB 调试授权。
+4. 一台手机时配置里的 `serial` 保持 `null`；多台手机时先双击 `check-device.bat`，把状态为 `device` 的序列号填入配置。
 
-| 文件 | 行为 |
-| --- | --- |
-| `start.bat` | 演练模式：进入确认页、选择观演人、停在“立即提交”前。 |
-| `start-formal.bat` | 正式模式：与演练走同一极速路径，确认页点击“立即提交”，随后验证订单结果。 |
-| `check-device.bat` | 可选：显示已连接手机；仅多设备时需要把序列号填入配置。 |
+## 配置
 
-两者共用 `rush_mode=true` 的快速路径。不要把正式模式当作付款自动化，它只提交订单。
+先复制对应模板，去掉 `.example` 后再编辑：
 
-## 配置重点
+- 额外选择型：`config/rehearsal.jsonc.example` → `config/rehearsal.jsonc`；正式时再复制为 `config/formal.jsonc`。
+- 连点型：`config/preselected-rehearsal.jsonc.example` → `config/preselected-rehearsal.jsonc`；正式时再复制为 `config/preselected-formal.jsonc`。
 
-- `session_index`：场次卡片从上到下、从 `0` 开始编号。没有场次选择页时填 `null`。
-- `price_index`：票档卡片从上到下、从 `0` 开始编号。新版页面的价格文字可能不可读取，因此必须先用演练确认序号。
-- `users`：需要选择的观演人数。当前最小示例按确认页复选框顺序选择前 N 位，不按姓名搜索。
-- `skip_quantity_adjustment`：预约已经锁定数量时设为 `true`，脚本不再点数量加号。
-- `skip_attendee_selection`：App 已经完成观演人预选时设为 `true`；默认 `false`，按顺序选择前 N 位。
-- `auto_navigate`：建议保持 `false`，开抢前由你手动停在正确的演出详情页，减少不确定步骤。
+通常只改这些字段：
 
-完整字段说明见 [配置说明](docs/configuration.md)。
+- `keyword`、`city`、`date`：填写目标演出页面上的信息。
+- `users`：填写已在大麦 App 中保存的观演人；人数等于列表长度。
+- `session_index`：额外选择型的场次顺序，从 `0` 开始；没有场次页填 `null`。
+- `price_index`：额外选择型的票档顺序，从 `0` 开始；它不是票面金额。
+- `sell_start_time`：定时开抢时间，使用 `2026-08-16T10:18:00+08:00` 这种格式；不定时可填 `null`。
+- `skip_attendee_selection`：预约页已经预选观演人时设为 `true`。
+- `skip_quantity_adjustment`：预约已经锁定数量时设为 `true`。
+- `if_commit_order`：演练为 `false`，正式为 `true`。
+
+连点型还要保持 `preselected_sku: true`。它会跳过场次和票档选择；`session_index`、`price_index` 仅为兼容配置保留，不参与开售后的点击。
+
+## 演练和正式运行
+
+每次新演出、新手机或大麦版本变化，都先演练：
+
+- 额外选择型：双击 `start.bat`，脚本会选场次、票档和观演人，停在“立即提交”前。
+- 连点型：分别双击 `start-preselected.bat`、`start-preselected-t10.bat`、`start-preselected-t20.bat`，比较哪一个能稳定进入确认页。
+
+演练确认路径和顺序无误后：
+
+- 额外选择型双击 `start-formal.bat`。
+- 连点型把演练配置复制为 `config/preselected-formal.jsonc`，确认 `if_commit_order: true` 和 `cta_first_tap_delay_ms` 后双击 `start-preselected-formal.bat`。
+
+正式入口只会提交订单，不会自动付款。启动前把大麦 App 停在目标演出详情页，手机保持解锁和前台，不要在开售临界时手动触碰屏幕。
 
 ## 文档
 
 - [快速开始](docs/quick-start.md)
 - [配置说明](docs/configuration.md)
-- [正式抢票前准备](docs/pre-sale-checklist.md)
+- [正式开抢前准备](docs/pre-sale-checklist.md)
 - [故障排查](docs/troubleshooting.md)
 
-## 来源与许可
-
-此项目基于 [currycan/HaTickets](https://github.com/currycan/HaTickets) 的 Android 移动端实现整理，只保留 UIAutomator2 的最小路径。保留的原始代码遵循 Apache License 2.0，详见 [LICENSE](LICENSE) 与 [NOTICE](NOTICE)。
+本项目基于 [currycan/HaTickets](https://github.com/currycan/HaTickets) 的 Android 移动端实现整理，原始许可见 [LICENSE](LICENSE) 和 [NOTICE](NOTICE)。

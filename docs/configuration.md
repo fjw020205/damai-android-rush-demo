@@ -1,69 +1,68 @@
 # 配置说明
 
-配置文件使用 JSONC，可以写 `//` 注释。演练配置和正式配置是两份独立文件，防止把提交开关误带进演练。
+配置文件是 JSONC，可以保留 `//` 注释。真实配置文件被 `.gitignore` 忽略，不要把姓名、设备序列号或具体演出信息提交到 GitHub。
 
-## 必填字段
+## 两种模式
 
-| 字段 | 含义 | 示例 |
-| --- | --- | --- |
-| `serial` | 一台已连接手机时填 `null`；多台手机时填写 `check-device.bat` 显示的序列号 | `ABC1234567` |
-| `keyword` | 演出搜索关键词，不能为空 | `歌手名 城市` |
-| `users` | 要选择的观演人数；按确认页复选框顺序选择前 N 位 | `["观演人一", "观演人二"]` |
-| `city` | 演出城市 | `北京` |
-| `date` | 场次日期文本 | `08.16` |
-| `price` | 票档原文，用于普通路径的辅助匹配 | `1280` |
-| `price_index` | 票档顺序，从 `0` 开始 | `2` |
-| `if_commit_order` | `false` 为演练，`true` 为正式提交 | `false` |
+### 额外选择型
 
-## 场次和票档的序号
+保持：
 
-新版大麦页面的一部分内容由 Canvas 绘制，UI 树不一定给出可读取的日期和票价文字。因此本示例优先按可见卡片顺序点击。
+```jsonc
+"preselected_sku": false,
+"session_index": 0,
+"price_index": 0
+```
 
-### `session_index`
+开售后脚本会按顺序点击场次和票档。`session_index` 和 `price_index` 都从 `0` 开始：第一张可点击卡片是 `0`，第二张是 `1`。它们不是日期、金额或票档名称。
 
-- 有场次选择页：从第一个可点击场次开始计数，顶部/左侧为 `0`，下一个为 `1`。
-- 没有场次选择页：填 `null`。此时页面会直接出现票档区，脚本不会额外点场次。
-- 不确定时：先用演练，观察实际选中项，再改序号。
+如果页面没有场次选择，填：
 
-### `price_index`
+```jsonc
+"session_index": null
+```
 
-- 从票档列表第一个可点击卡片开始计数，最上方是 `0`。
-- 不要把“680 / 980 / 1280”当成序号。先在 App 数清可选票档，再填对应下标。
-- 票档数量或排序可能随场次、城市和售罄状态改变。每一场新演出都应重新演练。
+`price` 只作为配置备注和旧路径辅助信息，极速路径以 `price_index` 为准。票档排序会受售罄状态影响，必须在同一场次下先演练。
 
-## 预约和观演人
+### 连点型
 
-| 字段 | 什么时候设为 `true` |
+保持：
+
+```jsonc
+"preselected_sku": true,
+"skip_attendee_selection": true,
+"skip_quantity_adjustment": true
+```
+
+这表示预约阶段已经锁定场次、票档、观演人和数量。开售后不扫描文字、不选择卡片，只对预约后的购买按钮执行快速连点。若观演人或数量没有预选，分别把对应的 `skip_...` 改为 `false`，并先用演练确认页面行为。
+
+## 常改字段
+
+| 字段 | 填法 |
 | --- | --- |
-| `skip_quantity_adjustment` | 预约/预售已固定购票数量，不应点击数量加号。 |
-| `skip_attendee_selection` | App 已经完成观演人预选，脚本不应再点击复选框。 |
+| `serial` | 单手机填 `null`；多手机填 `check-device.bat` 显示的序列号 |
+| `keyword` | 大麦 App 内能定位演出的关键词 |
+| `users` | 已保存的观演人姓名列表，列表长度代表人数 |
+| `city` / `date` | 页面上的城市和场次日期原文 |
+| `session_index` | 额外选择型的场次下标，从 `0` 开始；无场次页为 `null` |
+| `price_index` | 额外选择型的票档下标，从 `0` 开始 |
+| `sell_start_time` | ISO 时间，例如 `2026-08-16T10:18:00+08:00`；不定时填 `null` |
+| `if_commit_order` | `false` 演练，`true` 正式提交 |
+| `auto_navigate` | 建议 `false`，提前手动停在详情页 |
 
-默认最小示例使用：
+## 连点首击偏移
 
-```json
-"users": ["观演人一", "观演人二"],
-"skip_quantity_adjustment": true,
-"skip_attendee_selection": false
+`cta_first_tap_delay_ms` 只影响开售后第一击：
+
+```jsonc
+"cta_first_tap_delay_ms": 0
 ```
 
-这表示保持预约锁定的数量，在确认页按顺序选择前两位观演人。
+可比较 `0`、`10`、`20`。三个 `start-preselected*.bat` 演练入口会通过环境变量临时覆盖这个值，不会改写配置文件。正式模式使用正式配置里的值。
 
-## 推荐运行参数
+## JSONC 修改规则
 
-```json
-"auto_navigate": false,
-"rush_mode": true,
-"fast_retry_count": 1,
-"fast_retry_interval_ms": 80
-```
-
-`auto_navigate=false` 时，你自己提前打开正确详情页，减少开抢临界时的搜索和导航开销。`rush_mode=true` 让演练和正式共用快速路径。
-
-若知道精确开售时间，可设置：
-
-```json
-"sell_start_time": "2026-08-16T10:18:00+08:00",
-"countdown_lead_ms": 3000
-```
-
-不知道精确时间时保持 `sell_start_time: null`，手动停在详情页并通过演练确认按钮路径。
+- 字符串使用双引号。
+- 每一项之间保留逗号，最后一项不要多写逗号。
+- 时间必须是完整 ISO 格式，时区建议写 `+08:00`。
+- 修改后先运行演练；如果提示“配置文件格式错误”，优先检查上一行逗号和引号。

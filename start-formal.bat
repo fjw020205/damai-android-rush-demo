@@ -18,7 +18,8 @@ if not exist "%HATICKETS_LAUNCH_CONFIG%" (
     exit /b 1
 )
 
-echo Formal mode: this will click "Submit Order" but never pays.
+echo Extra-selection formal mode: selects by index and clicks "Submit Order".
+echo It never starts payment.
 echo.
 "%~dp0.venv\Scripts\python.exe" -m mobile.damai_app --config "%HATICKETS_LAUNCH_CONFIG%" --result-json "%HATICKETS_LAUNCH_RESULT%"
 pause

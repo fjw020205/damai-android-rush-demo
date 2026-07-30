@@ -22,7 +22,7 @@ except ModuleNotFoundError as e:
     raise SystemExit(
         "依赖缺失：selenium 未安装。\n"
         "→ 请先双击项目根目录的 setup.bat\n"
-        "→ 然后使用 start.bat 或 start-formal.bat 启动"
+        "→ 然后使用 start.bat、start-formal.bat 或 start-preselected*.bat 启动"
     ) from e
 
 try:

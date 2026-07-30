@@ -35,12 +35,14 @@ CONFIG_OVERRIDE_ENV_VAR = "HATICKETS_CONFIG_PATH"
 # U-12：serial 覆盖通道（--serial CLI 参数 / 脚本 export 均写此环境变量），
 # 非空时优先于配置文件的 serial 字段；空/纯空白视为未设置（与 CONFIG_OVERRIDE_ENV_VAR 口径一致）。
 SERIAL_OVERRIDE_ENV_VAR = "HATICKETS_SERIAL"
+# 仅供实验入口覆盖首击偏移，不会写回配置文件。
+CTA_FIRST_TAP_DELAY_OVERRIDE_ENV_VAR = "HATICKETS_CTA_FIRST_TAP_DELAY_MS"
 DEFAULT_CONFIG_FILENAMES = (DEFAULT_CONFIG_FILENAME,)
 
 PRICE_INDEX_LARGE_WARNING_THRESHOLD = 50
 
 # ── U-05 启动期防护常量 ──
-# 与 config 目录下模板的占位字面量一一对应，只做 strip 后精确全等匹配。
+# 与 config/*.jsonc.example 的模板字面量一一对应，只做 strip 后精确全等匹配。
 # 注意：keyword 的示例值 "张杰 演唱会" 是合法真实搜索词，刻意不列入黑名单。
 PLACEHOLDER_LITERALS = {
     "serial": frozenset({"你的设备序列号"}),
@@ -66,6 +68,7 @@ KNOWN_CONFIG_KEYS = frozenset(
         "session_index",
         "price",
         "price_index",
+        "preselected_sku",
         "if_commit_order",
         "skip_attendee_selection",
         "skip_quantity_adjustment",
@@ -73,6 +76,7 @@ KNOWN_CONFIG_KEYS = frozenset(
         "auto_navigate",
         "sell_start_time",
         "countdown_lead_ms",
+        "cta_first_tap_delay_ms",
         "wait_cta_ready_timeout_ms",
         "fast_retry_count",
         "fast_retry_interval_ms",
@@ -230,7 +234,7 @@ def validate_config_dict(config_dict, strict_placeholders=True, source="配置�
             logger.warning("字段 %s %s", key, DEPRECATED_CONFIG_KEYS[key])
     for key in unknown_config_keys(config_dict):
         logger.warning(
-            "字段 %s 未识别，将被忽略；请对照 config 目录中的配置模板检查拼写",
+            "字段 %s 未识别，将被忽略；请对照 config/*.jsonc.example 检查拼写",
             key,
         )
 
@@ -241,7 +245,7 @@ def validate_config_dict(config_dict, strict_placeholders=True, source="配置�
     for key, value in violations:
         lines.append(f'  - {key} = "{value}"')
     lines += [
-        "请编辑 config 目录中的演练或正式配置：",
+        "请编辑 config 目录中的对应配置：",
         "  serial → 填 adb devices 输出的设备序列号（或设为 null 由脚本自动识别单台设备）",
         "  users  → 填已在大麦 App「观演人」中添加并保存的真实姓名",
         "  city/date/price → 填大麦 App 演出页面上的原文",
@@ -633,7 +637,8 @@ def _normalize_flag(value):
 def read_runtime_mode(config_path=None):
     """读取运行模式旗标——与实际执行（Config.load_config）同一解析器（U-03）。
 
-    供启动器调用：不再用文本匹配 JSONC，保证「屏显、改写判定、实际执行」三者同源。
+    供 start_ticket_grabbing.sh 调用：shell 不再用 grep 文本匹配 JSONC
+    （grep 会命中被注释掉的键值行），保证「屏显、改写判定、实际执行」三者同源。
 
     返回 (probe_only, if_commit_order) 规范化字符串二元组，取值为
     "true" / "false" / "__missing__"（键缺失或显式 null）/ "__invalid__"（非布尔值）。
@@ -659,6 +664,7 @@ class Config:
         price,
         price_index,
         if_commit_order,
+        preselected_sku=False,
         skip_attendee_selection=False,
         skip_quantity_adjustment=False,
         session_index=None,
@@ -667,6 +673,7 @@ class Config:
         app_activity=".launcher.splash.SplashMainActivity",
         sell_start_time=None,
         countdown_lead_ms=3000,
+        cta_first_tap_delay_ms=0,
         wait_cta_ready_timeout_ms=0,
         fast_retry_count=8,
         fast_retry_interval_ms=120,
@@ -712,6 +719,12 @@ class Config:
         if not isinstance(if_commit_order, bool):
             raise ValueError(
                 f"if_commit_order 必须是布尔值，实际值: {if_commit_order!r}"
+            )
+
+        if not isinstance(preselected_sku, bool):
+            raise ValueError(
+                "preselected_sku 必须是布尔值，实际值: "
+                f"{preselected_sku!r}"
             )
 
         if not isinstance(skip_attendee_selection, bool):
@@ -781,6 +794,16 @@ class Config:
             )
 
         if (
+            not isinstance(cta_first_tap_delay_ms, int)
+            or isinstance(cta_first_tap_delay_ms, bool)
+            or cta_first_tap_delay_ms < 0
+        ):
+            raise ValueError(
+                "cta_first_tap_delay_ms 必须是非负整数，实际值: "
+                f"{cta_first_tap_delay_ms!r}"
+            )
+
+        if (
             not isinstance(wait_cta_ready_timeout_ms, int)
             or isinstance(wait_cta_ready_timeout_ms, bool)
             or wait_cta_ready_timeout_ms < 0
@@ -827,6 +850,7 @@ class Config:
         self.session_index = session_index
         self.price = price
         self.price_index = price_index
+        self.preselected_sku = preselected_sku
         self.if_commit_order = if_commit_order
         self.skip_attendee_selection = skip_attendee_selection
         self.skip_quantity_adjustment = skip_quantity_adjustment
@@ -835,6 +859,7 @@ class Config:
         self.app_activity = app_activity
         self.sell_start_time = sell_start_time
         self.countdown_lead_ms = countdown_lead_ms
+        self.cta_first_tap_delay_ms = cta_first_tap_delay_ms
         self.wait_cta_ready_timeout_ms = wait_cta_ready_timeout_ms
         self.fast_retry_count = fast_retry_count
         self.fast_retry_interval_ms = fast_retry_interval_ms
@@ -887,6 +912,7 @@ class Config:
             "session_index": self.session_index,
             "price": self.price,
             "price_index": self.price_index,
+            "preselected_sku": self.preselected_sku,
             "if_commit_order": self.if_commit_order,
             "skip_attendee_selection": self.skip_attendee_selection,
             "skip_quantity_adjustment": self.skip_quantity_adjustment,
@@ -894,6 +920,7 @@ class Config:
             "auto_navigate": self.auto_navigate,
             "sell_start_time": self.sell_start_time,
             "countdown_lead_ms": self.countdown_lead_ms,
+            "cta_first_tap_delay_ms": self.cta_first_tap_delay_ms,
             "wait_cta_ready_timeout_ms": self.wait_cta_ready_timeout_ms,
             "fast_retry_count": self.fast_retry_count,
             "fast_retry_interval_ms": self.fast_retry_interval_ms,
@@ -938,10 +965,27 @@ class Config:
                 raise ConfigError(f"price_index 不能为负数（当前 {raw_price_index}）")
             if raw_price_index > PRICE_INDEX_LARGE_WARNING_THRESHOLD:
                 logger.warning(
-                    "price_index=%d 异常大（>%d），请确认 config 中的配置文件是否填错",
+                    "price_index=%d 异常大（>%d），请确认 config 中的 price_index 是否填错",
                     raw_price_index,
                     PRICE_INDEX_LARGE_WARNING_THRESHOLD,
                 )
+
+        raw_cta_delay_override = os.environ.get(
+            CTA_FIRST_TAP_DELAY_OVERRIDE_ENV_VAR, ""
+        ).strip()
+        if raw_cta_delay_override:
+            try:
+                cta_delay_override = int(raw_cta_delay_override)
+            except ValueError as exc:
+                raise ConfigError(
+                    f"{CTA_FIRST_TAP_DELAY_OVERRIDE_ENV_VAR} 必须是非负整数"
+                ) from exc
+            if cta_delay_override < 0:
+                raise ConfigError(
+                    f"{CTA_FIRST_TAP_DELAY_OVERRIDE_ENV_VAR} 必须是非负整数"
+                )
+        else:
+            cta_delay_override = config.get("cta_first_tap_delay_ms", 0)
 
         return Config(
             keyword=config.get("keyword"),
@@ -951,6 +995,7 @@ class Config:
             session_index=config.get("session_index"),
             price=config["price"],
             price_index=config["price_index"],
+            preselected_sku=config.get("preselected_sku", False),
             if_commit_order=config["if_commit_order"],
             skip_attendee_selection=config.get("skip_attendee_selection", False),
             skip_quantity_adjustment=config.get("skip_quantity_adjustment", False),
@@ -961,6 +1006,7 @@ class Config:
             ),
             sell_start_time=config.get("sell_start_time"),
             countdown_lead_ms=config.get("countdown_lead_ms", 3000),
+            cta_first_tap_delay_ms=cta_delay_override,
             wait_cta_ready_timeout_ms=config.get("wait_cta_ready_timeout_ms", 0),
             fast_retry_count=config.get("fast_retry_count", 8),
             fast_retry_interval_ms=config.get("fast_retry_interval_ms", 120),

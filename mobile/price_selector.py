@@ -125,7 +125,7 @@ def select_price_by_index(
         raise PriceSelectorError(
             f"price_index={index} 越界（可用 0..{len(cards) - 1}）。\n"
             f"可用价档：\n{available}\n"
-            "请修改 config 配置文件中的 price_index" + suffix
+            "请修改 config 中的 price_index" + suffix
         )
 
     return cards[index]

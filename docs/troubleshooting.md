@@ -1,38 +1,36 @@
 # 故障排查
 
-## `adb devices` 看不到手机
+## 手机没有显示
 
-1. 换一根支持数据传输的数据线和另一个 USB 口。
-2. 手机上重新插拔后允许 USB 调试。
-3. 若状态为 `unauthorized`，在手机的开发者选项中撤销 USB 调试授权，再重新连接。
-4. 确认电脑已安装 Android Platform Tools，重新打开终端后再执行 `adb devices`。
+换数据线或 USB 口；重新插拔并在手机上允许 USB 调试。如果状态是 `unauthorized`，撤销 USB 调试授权后重新连接。如果状态是 `offline`，先重启手机上的 USB 调试，再运行 `check-device.bat`。
 
 ## 启动后提示配置不存在
 
-演练入口需要 `config/rehearsal.jsonc`，正式入口需要 `config/formal.jsonc`。它们默认不会随 Git 下载，必须由各自的 `.example` 模板复制而来。
+`.example` 只是模板，不会被入口直接读取。先复制为实际文件：
 
-## 场次选错或没有场次页
+- `rehearsal.jsonc.example` → `rehearsal.jsonc`
+- `formal.jsonc.example` → `formal.jsonc`
+- `preselected-rehearsal.jsonc.example` → `preselected-rehearsal.jsonc`
+- `preselected-formal.jsonc.example` → `preselected-formal.jsonc`
 
-有多个场次时重新数卡片顺序，修改 `session_index` 后再演练。若进入票档页前完全没有场次卡片，设置：
+## 提示配置文件格式错误
 
-```json
-"session_index": null
-```
+JSONC 允许注释，但仍然必须使用双引号和正确逗号。重点检查刚修改的 `sell_start_time`、`session_index`、`price_index` 是否写在正确的行，时间是否类似 `2026-08-16T10:18:00+08:00`。
 
-不要为了“加速”在多场次活动里随意跳过场次选择。
+## 场次或票档选错
 
-## 票档选错
+这是额外选择型的顺序参数问题。重新进入同一场次，数清可点击卡片，第一项是 `0`，再修改 `session_index` 或 `price_index` 并重新演练。不要把 `680`、`980`、`1280` 直接填进 `price_index`。
 
-`price_index` 从 `0` 开始，不是票面金额。先在同一场次下完整演练，数清卡片顺序后填写。演出、城市、场次或售罄状态变化都可能改变顺序。
+如果预约已经锁定场次和票档，应改用连点型模板并设置 `preselected_sku: true`，不要让额外选择型在开售后重复找票档。
 
-## 观演人选错或数量不对
+## 连点型误入预约按钮
 
-默认按确认页顺序选择前 N 位，N 等于 `users` 列表长度。调整列表长度，而不是填写未保存的姓名。预约已固定数量时设 `skip_quantity_adjustment=true`；已由 App 预选观演人时设 `skip_attendee_selection=true`。
+先确认 `sell_start_time` 与手机时间一致，且页面确实是预约后详情页。分别演练 T0、T0+10ms、T0+20ms；若页面切换较慢，使用较晚的版本。连点型是按时间信号直接点击，不能保证服务端已经开放库存。
+
+## 提交后没有支付页
+
+提交订单不等于支付成功，可能进入排队、验证码、库存不足或订单待确认状态。先查看手机订单状态，不要重复启动正式入口。
 
 ## 小米/HyperOS 点击无效
 
-先确认 USB 调试已开启，并在演练中验证真实点击。不同 Android 版本可能限制自动化注入方式；不要在正式开抢前第一次更新大麦、系统或 Python 依赖。若升级后失效，保留日志和 App/系统版本信息，再回退到已验证的环境。
-
-## 提交后没有进入支付页
-
-提交成功不等于一定进入支付页。可能是排队、库存不足、验证码或订单状态待确认。先在手机查看订单状态，不要重复运行正式入口，以免产生重复订单。
+确认 USB 调试授权没有失效，并用演练验证当前大麦版本。不要在正式开抢前第一次升级大麦、系统或 Python 依赖；升级后先重新演练。

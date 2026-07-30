@@ -1,14 +1,24 @@
 # Damai Android Rush Demo - Development Log
 
 ## Current Status
-- **Version**: V0.1
-- **Positioning**: Minimal Android UIAutomator2 purchase-flow example.
-- **Completed**: Android-only core, rehearsal/formal Windows launchers, public configuration templates, setup and operational docs.
-- **Open**: App UI identifiers and card ordering must be verified against each event before a formal run.
+- **Version**: V0.2
+- **Positioning**: Minimal Android UIAutomator2 example with two practical purchase paths.
+- **Completed**: Android-only core, index-based session/ticket-tier path, reservation-ready direct-tap path, T0/T0+10ms/T0+20ms rehearsal launchers, public templates and operational docs.
+- **Open**: App UI identifiers, reservation state and card ordering must be verified against each event before a formal run.
 
 ---
 
 ## Version History
+
+### V0.2 - 2026-07-30
+**Design Decisions**:
+- Documented two user-facing modes: extra selection by zero-based indexes and direct taps after reservation has locked the SKU.
+- Kept the direct-tap timing variants as rehearsal-only probes; formal mode reads the chosen `cta_first_tap_delay_ms` from its private config.
+
+**Progress**:
+- [x] Published the preselected-SKU code path, templates and Windows launchers.
+- [x] Reworked README and operational docs around download, configuration, rehearsal and formal launch.
+- [ ] Verify the public setup and a no-submit rehearsal in a clean environment.
 
 ### V0.1 - 2026-07-28
 **Design Decisions**:

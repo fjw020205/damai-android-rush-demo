@@ -18,7 +18,7 @@ if not exist "%HATICKETS_LAUNCH_CONFIG%" (
     exit /b 1
 )
 
-echo Rehearsal: selects the configured session, ticket tier, and attendees.
+echo Extra-selection rehearsal: selects session and ticket tier by index.
 echo It stops before "Submit Order" and never pays.
 echo.
 "%~dp0.venv\Scripts\python.exe" -m mobile.damai_app --config "%HATICKETS_LAUNCH_CONFIG%" --result-json "%HATICKETS_LAUNCH_RESULT%"

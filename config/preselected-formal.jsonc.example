@@ -1,0 +1,26 @@
+{
+  // 一台已授权手机填 null；多台手机填 check-device.bat 显示的序列号。
+  "serial": null,
+  "keyword": "目标演出关键词",
+  "target_title": null,
+  "target_venue": null,
+  "users": ["观演人一", "观演人二"],
+  "city": "演出城市",
+  "date": "场次日期",
+  "session_index": null,
+  "price": "已预约票档",
+  "price_index": 0,
+  "preselected_sku": true,
+  "probe_only": false,
+  "if_commit_order": true,
+  "skip_attendee_selection": true,
+  "skip_quantity_adjustment": true,
+  "auto_navigate": false,
+  "sell_start_time": "2026-08-16T10:18:00+08:00",
+  // 正式入口会读取这个值；建议先用三个演练入口比较后再确定。
+  "cta_first_tap_delay_ms": 0,
+  "rush_mode": true,
+  "rush_skip_price_dump": true,
+  "fast_retry_count": 1,
+  "fast_retry_interval_ms": 80
+}

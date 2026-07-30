@@ -111,6 +111,10 @@ class FastPipeline:
         """Whether the Damai reservation has already fixed the ticket quantity."""
         return getattr(self._config, "skip_quantity_adjustment", False) is True
 
+    def _preselected_sku(self) -> bool:
+        """Whether reservation already selected both session and ticket tier."""
+        return getattr(self._config, "preselected_sku", False) is True
+
     def _confirm_page_ready(self) -> bool:
         """Detect confirm-page readiness with lighter-weight fallbacks."""
         bot = self._bot
@@ -436,9 +440,26 @@ class FastPipeline:
     def has_warm_coords(self) -> bool:
         """True when all keys required for a warm run are cached."""
         required_keys = _WARM_REQUIRED_KEYS
+        if self._preselected_sku():
+            required_keys = required_keys - {"price"}
         if self._skip_attendee_selection():
             required_keys = required_keys - {"attendee_checkboxes"}
         return required_keys.issubset(self._cached_coords.keys())
+
+    def _click_preselected_sku_until_confirm(self, sku_buy_coords, deadline: float) -> bool:
+        """Use the reservation-ready SKU button as the direct continuation tap."""
+        if not sku_buy_coords or time.time() >= deadline:
+            return False
+
+        for attempt in range(1, 3):
+            batch_shell_taps(self._device, [sku_buy_coords, sku_buy_coords])
+            if self._wait_for_confirm_ready(deadline, poll_window_s=0.45):
+                logger.info(
+                    "预约场次/票档已锁定，直接连点确定购买；确认页在第 %d 轮到达",
+                    attempt,
+                )
+                return True
+        return self._resource_exists("cn.damai:id/checkbox")
 
     # -- Warm path ----------------------------------------------------------
 
@@ -694,6 +715,27 @@ class FastPipeline:
             logger.error("fast path stopped at stage=entry_state: %s", entry_probe)
             return None
 
+        if self._preselected_sku():
+            # Reservation has already selected session and price. Do not scan,
+            # match, or tap either control on the sale-critical path.
+            sku_xml = bot._dump_hierarchy_xml()
+            if sku_xml is None:
+                logger.error("fast path stopped at stage=preselected_sku_xml")
+                return None
+            sku_buy_coords = bot._get_buy_button_coordinates(xml_root=sku_xml)
+            if not sku_buy_coords:
+                logger.error("fast path stopped at stage=preselected_sku_buy_coordinates")
+                return None
+            self._cached_coords["sku_buy"] = sku_buy_coords
+            logger.info("预约场次/票档已预选，跳过场次和票档选择")
+            confirmed = self._click_preselected_sku_until_confirm(
+                sku_buy_coords, global_deadline
+            )
+            if not confirmed:
+                logger.error("fast path stopped at stage=preselected_sku_to_confirm")
+                return None
+            return self._finish_confirm(start_time)
+
         # The first SKU state can be the Canvas session picker. Dispatch the
         # configured session immediately, then use a cheap resource-id probe to
         # detect the price panel and resend only when the app drops the tap.
@@ -701,17 +743,19 @@ class FastPipeline:
             logger.error("fast path stopped at stage=session_to_price")
             return None
 
-        # --- Phase 3: SKU page --- single XML dump for price + sku_buy coords ---
         sku_xml = bot._dump_hierarchy_xml()
         if sku_xml is None:
-            logger.error("fast path stopped at stage=price_xml")
+            logger.error("fast path stopped at stage=sku_xml")
+            return None
+        sku_buy_coords = bot._get_buy_button_coordinates(xml_root=sku_xml)
+        if not sku_buy_coords:
+            logger.error("fast path stopped at stage=sku_buy_coordinates")
             return None
         price_coords = bot._get_price_option_coordinates_by_config_index(
             xml_root=sku_xml
         )
-        sku_buy_coords = bot._get_buy_button_coordinates(xml_root=sku_xml)
-        if not price_coords or not sku_buy_coords:
-            logger.error("fast path stopped at stage=sku_coordinates")
+        if not price_coords:
+            logger.error("fast path stopped at stage=price_coordinates")
             return None
 
         # Cache for future warm-pipeline runs.
@@ -891,8 +935,8 @@ class FastPipeline:
         no_match = self._cached_no_match
 
         detail_buy = coords["detail_buy"]
-        price = coords["price"]
         sku_buy = coords["sku_buy"]
+        price = coords.get("price")
         attendees = coords.get("attendee_checkboxes", [])
         date = coords.get("date")
         city = coords.get("city")
@@ -926,27 +970,35 @@ class FastPipeline:
         elif entry_probe["state"] != "sku_page":
             return None
 
-        # --- Step 2: select price + click buy, poll for confirm ---
-        logger.info("选择票价...")
-        logger.info(f"通过配置索引直接选择票价: price_index={self._config.price_index}")
-        logger.info("选择数量...")
-        logger.info("确定购买...")
-
         confirmed = False
         if entry_probe["state"] == "sku_page":
-            confirmed = self._shell_price_and_buy_until_confirm(price, sku_buy, deadline)
-            if not confirmed and not self._select_price_with_pipeline(price):
-                return None
-            while (
-                time.time() < deadline
-                and entry_probe["state"] == "sku_page"
-                and not confirmed
-            ):
-                if not self._click_sku_buy_with_pipeline(sku_buy):
+            if self._preselected_sku():
+                logger.info("预约场次/票档已预选，跳过选择，直接连点确定购买")
+                confirmed = self._click_preselected_sku_until_confirm(
+                    sku_buy, deadline
+                )
+            else:
+                logger.info("选择票价...")
+                logger.info(f"通过配置索引直接选择票价: price_index={self._config.price_index}")
+                logger.info("选择数量...")
+                logger.info("确定购买...")
+                if price is None:
                     return None
-                if self._wait_for_confirm_ready(deadline, poll_window_s=0.55):
-                    confirmed = True
-                    break
+                confirmed = self._shell_price_and_buy_until_confirm(
+                    price, sku_buy, deadline
+                )
+                if not confirmed and not self._select_price_with_pipeline(price):
+                    return None
+                while (
+                    time.time() < deadline
+                    and entry_probe["state"] == "sku_page"
+                    and not confirmed
+                ):
+                    if not self._click_sku_buy_with_pipeline(sku_buy):
+                        return None
+                    if self._wait_for_confirm_ready(deadline, poll_window_s=0.55):
+                        confirmed = True
+                        break
 
         if entry_probe["state"] == "sku_page" and not confirmed:
             return None

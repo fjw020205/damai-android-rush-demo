@@ -1,59 +1,50 @@
 # 快速开始
 
-这份示例假定你使用 Windows 和 Android 真机。请在开抢前先完成一次演练，不要第一次就运行正式入口。
+这份流程面向 Windows 和 Android 真机。第一次使用、换演出或更新大麦 App 后，都先做演练。
 
-## 1. 下载与安装
+## 1. 安装
 
-克隆仓库或下载 ZIP 并解压，然后双击根目录的 `setup.bat`。它会创建 `.venv` 并安装 Python 依赖。
-
-如果 `setup.bat` 提示找不到 Python，请安装 Python 3.10-3.13，并在安装器中勾选“Add Python to PATH”。
+下载 ZIP 并解压，双击根目录 `setup.bat`。如果提示找不到 Python，安装 Python 3.10-3.13，并勾选“Add Python to PATH”。
 
 ## 2. 连接手机
 
-1. 在手机设置中打开开发者选项和 USB 调试。
-2. 用数据线连接电脑，在手机弹窗里允许该电脑的 USB 调试授权。
-3. 只有一台已授权手机时，配置的 `serial` 保持 `null`，启动器会自动识别。
-4. 连接多台手机时，双击 `check-device.bat`。输出中状态必须是 `device`，把对应序列号填到配置的 `serial` 字段。
+1. 打开手机开发者选项和 USB 调试。
+2. 数据线连接电脑，在手机弹窗中允许 USB 调试。
+3. 只有一台手机时，配置 `serial` 保持 `null`。
+4. 多台手机时双击 `check-device.bat`，把状态为 `device` 的序列号填入配置。
 
-## 3. 创建演练配置
+## 3. 复制配置
 
-在资源管理器中复制：
+根据页面类型二选一：
 
-```text
-config/rehearsal.jsonc.example
-```
+- 页面开售后还要选场次/票档：复制 `config/rehearsal.jsonc.example` 为 `config/rehearsal.jsonc`。
+- 预约已经锁定场次/票档：复制 `config/preselected-rehearsal.jsonc.example` 为 `config/preselected-rehearsal.jsonc`。
 
-重命名为：
+打开配置，至少填写 `keyword`、`city`、`date`、`users` 和 `sell_start_time`。额外选择型还要填写 `session_index`、`price_index`。
 
-```text
-config/rehearsal.jsonc
-```
+## 4. 做演练
 
-填写演出、场次和票档参数。先看 [配置说明](configuration.md)，尤其是 `session_index` 和 `price_index`。
+先登录大麦 App，手动打开目标演出详情页并保持前台。
 
-## 4. 首次演练
+- 额外选择型双击 `start.bat`。它会选择配置的场次、票档和观演人，停在“立即提交”前。
+- 连点型依次试 `start-preselected.bat`、`start-preselected-t10.bat`、`start-preselected-t20.bat`。它们分别在 T0、T0+10ms、T0+20ms 发送第一击，均不提交订单。
 
-在大麦 App 手动完成登录，打开目标演出详情页并保持前台。双击根目录的 `start.bat`。
+结果会写入 `logs/`，该目录不会上传 GitHub。演练必须确认最终场次、票档和观演人正确。
 
-成功演练的标准是：脚本按配置进入购票页，选择正确的场次、票档和前 N 位观演人，停在“立即提交”之前。结果写入 `logs/rehearsal-result.json`，该文件不会提交到 GitHub。
+## 5. 正式运行
 
-如果场次或票档不对，先退出订单页，改配置后再次演练。不要直接启动正式模式。
+先复制正式模板：
 
-## 5. 正式模式
+- 额外选择型：`config/rehearsal.jsonc` → `config/formal.jsonc`，将 `if_commit_order` 改为 `true`。
+- 连点型：`config/preselected-rehearsal.jsonc` → `config/preselected-formal.jsonc`，将 `if_commit_order` 改为 `true`。
 
-正式开抢前，将演练配置复制为 `config/formal.jsonc`，唯一必须不同的字段是：
+开售前把 App 停在详情页：
 
-```json
-"if_commit_order": true
-```
+- 额外选择型双击 `start-formal.bat`。
+- 连点型双击 `start-preselected-formal.bat`。
 
-提前手动停在目标详情页。开抢时双击 `start-formal.bat`。它和演练共用同一极速路径，确认页会点击“立即提交”；支付、验证码和任何二次验证由你在手机上手动完成。
+正式入口会点击“立即提交”，不会支付。支付、验证码、短信和排队提示由用户手动处理。
 
 ## VS Code
 
-不需要使用终端。可直接双击三个批处理文件：
-
-- `setup.bat`：仅首次安装或依赖损坏时使用。
-- `check-device.bat`：可选，多台手机时查看设备序列号。
-- `start.bat`：演练。
-- `start-formal.bat`：正式提交。
+不需要终端。资源管理器中双击 `.bat` 即可；也可以在 VS Code 里打开项目后，用“Tasks: Run Task”启动已有入口。

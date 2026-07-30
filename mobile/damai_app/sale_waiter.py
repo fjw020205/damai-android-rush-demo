@@ -113,8 +113,12 @@ class SaleWaiterMixin:
 
         return False
 
-    def wait_for_sale_start(self):
-        """等待开售时间，在开售前 countdown_lead_ms 毫秒开始轮询。"""
+    def wait_for_sale_start(self, dispatch_cta=True):
+        """等待开售时间，在开售前 countdown_lead_ms 毫秒开始轮询。
+
+        ``dispatch_cta=False`` 供详情页极速管道使用：只等待严格的开售
+        时间门，不提前派发点击，让管道在目标时刻自行执行同一条热路径。
+        """
         if self.config.sell_start_time is None:
             if self.config.wait_cta_ready_timeout_ms > 0:
                 logger.info("未配置 sell_start_time，已跳过 CTA 等待，直接开始执行")
@@ -125,10 +129,25 @@ class SaleWaiterMixin:
         # Ensure timezone-aware
         if sell_time.tzinfo is None:
             sell_time = sell_time.replace(tzinfo=_tz_shanghai)
+        cta_time = sell_time + timedelta(
+            milliseconds=self.config.cta_first_tap_delay_ms
+        )
 
         now = datetime.now(tz=_tz_shanghai)
-        if now >= sell_time:
-            logger.info("开售时间已过，跳过等待")
+        if now >= cta_time:
+            logger.info("首击时刻已过，跳过等待")
+            return
+
+        if not dispatch_cta:
+            sleep_seconds = (cta_time - now).total_seconds()
+            logger.info(
+                "定时门已启用，将等待至 %s 后进入极速抢票路径（首击偏移 %dms）",
+                self.config.sell_start_time,
+                self.config.cta_first_tap_delay_ms,
+            )
+            if sleep_seconds > 0:
+                time.sleep(sleep_seconds)
+            logger.info("已到达配置开售时间，进入极速抢票路径")
             return
 
         lead_delta = timedelta(milliseconds=self.config.countdown_lead_ms)
@@ -146,7 +165,7 @@ class SaleWaiterMixin:
         # 坐标兜底 → 页面结构多信号兜底」。旧实现先串行烧 guard.wait_until_safe
         # 8s，再串行烧文案轮询 8s；大麦 ≥9.0.2x 详情页 CTA 为 Canvas 自绘
         # （btn_buy_view 已移除、无任何文案节点），两段全部超时，开抢比配置晚 ~8s。
-        deadline = sell_time + timedelta(seconds=8)
+        deadline = cta_time + timedelta(seconds=8)
         polls = 0
         saw_cta_text = False
         guard = getattr(self, "_guard", None)
@@ -173,9 +192,8 @@ class SaleWaiterMixin:
             polls += 1
 
             # 严格定时门：配置 sell_start_time 时，任何 CTA 文案或结构信号都不能
-            # 提前放行。否则把未来时刻用于普通可购页演练时，"立即购买" 会绕过
-            # Canvas 分支而在目标时间前触发，既污染定时测试也违背配置语义。
-            if now < sell_time:
+            # 在首击偏移到达前放行。首击偏移用于测试 App 在开售时刻的重绘竞态。
+            if now < cta_time:
                 time.sleep(0.02)
                 continue
 
@@ -220,7 +238,7 @@ class SaleWaiterMixin:
             #     返回，把点击交给下游 _enter_purchase_flow_from_detail_page 的
             #     容器 ID/坐标路径（预约风险由 SKU 页 reservation_mode 检测兜底）。
             #     必须置于 _is_sale_ready 之前，避免被其每轮 ~1s 的串行 u2 查询拖后。
-            if now >= sell_time and not saw_cta_text and guard is not None:
+            if now >= cta_time and not saw_cta_text and guard is not None:
                 if self._dispatch_sale_cta(canvas_coords):
                     log_event(
                         logger,

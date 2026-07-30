@@ -796,6 +796,11 @@ class DamaiBot(
                     "极速路径：跳过启动弹窗与登录探测，直接执行抢票热路径"
                 )
                 if page_probe["state"] == "detail_page":
+                    if self.config.sell_start_time is not None:
+                        # 定时极速模式先完成轻量预选，再只等待时钟；不能让
+                        # sale_waiter 提前点击 CTA，也不能让热路径绕过时间门。
+                        self._prepare_detail_page_hot_path()
+                        self.wait_for_sale_start(dispatch_cta=False)
                     if self._has_warm_pipeline_coords():
                         # Warm pipeline: blind shell clicks + concurrent polling.
                         pipeline_result = self._run_warm_validation_pipeline(start_time)

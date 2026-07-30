@@ -10,12 +10,16 @@
   "session_index": 0,
   "price": "票档原文",
   "price_index": 0,
+  // 预约已锁定场次和票档时改为 true，并改用 start-preselected-formal.bat。
+  "preselected_sku": false,
   "probe_only": false,
   "if_commit_order": true,
   "skip_attendee_selection": false,
   "skip_quantity_adjustment": true,
   "auto_navigate": false,
   "sell_start_time": null,
+  // 连点型可填 0、10 或 20；额外选择型保持 0。
+  "cta_first_tap_delay_ms": 0,
   "rush_mode": true,
   "rush_skip_price_dump": true,
   "fast_retry_count": 1,

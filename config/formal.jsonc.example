@@ -7,9 +7,11 @@
   "users": ["观演人一", "观演人二"],
   "city": "演出城市",
   "date": "场次日期",
-  "session_index": 0,
+  // 场次按页面横向从左到右数，第一项是 1；没有场次页填 null。
+  "session_index": 1,
   "price": "票档原文",
-  "price_index": 0,
+  // 票档按页面横向从左到右数，第一项是 1。
+  "price_index": 1,
   // 预约已锁定场次和票档时改为 true，并改用 start-preselected-formal.bat。
   "preselected_sku": false,
   "probe_only": false,

@@ -9,7 +9,7 @@
   "date": "场次日期",
   "session_index": null,
   "price": "已预约票档",
-  "price_index": 0,
+  "price_index": 1,
   "preselected_sku": true,
   "probe_only": false,
   "if_commit_order": true,

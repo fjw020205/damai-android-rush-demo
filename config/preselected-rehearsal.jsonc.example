@@ -10,7 +10,7 @@
   // 连点型不在开售后选择场次和票档，这两个字段仅为兼容配置保留。
   "session_index": null,
   "price": "已预约票档",
-  "price_index": 0,
+  "price_index": 1,
   "preselected_sku": true,
   "probe_only": false,
   "if_commit_order": false,

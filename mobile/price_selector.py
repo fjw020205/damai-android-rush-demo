@@ -95,7 +95,7 @@ def select_price_by_index(
     dump_on_fail: Optional[Path] = None,
     dump_writer: Optional[Callable[[Path], None]] = None,
 ) -> PriceCard:
-    """Return ``cards[index]`` with actionable diagnostics on failure.
+    """Return the user-facing 1-based ``cards[index]`` with diagnostics.
 
     On any failure the optional ``dump_writer`` is invoked with ``dump_on_fail``
     so the caller (e.g. DamaiBot) can persist a hierarchy XML before the
@@ -115,20 +115,20 @@ def select_price_by_index(
             "  3. 大麦 App UI 变更，需更新选择器" + suffix
         )
 
-    if index < 0 or index >= len(cards):
+    if index < 1 or index > len(cards):
         saved = _safe_call_dump_writer(dump_writer, dump_on_fail)
         suffix = f"\nUI dump 已保存：{saved}" if saved else ""
         available = "\n".join(
-            f"  [{c.index}] {c.price_text or '(空)'}" + (f" [{c.tag}]" if c.tag else "")
+            f"  [{c.index + 1}] {c.price_text or '(空)'}" + (f" [{c.tag}]" if c.tag else "")
             for c in cards
         )
         raise PriceSelectorError(
-            f"price_index={index} 越界（可用 0..{len(cards) - 1}）。\n"
+            f"price_index={index} 越界（可用 1..{len(cards)}）。\n"
             f"可用价档：\n{available}\n"
             "请修改 config 中的 price_index" + suffix
         )
 
-    return cards[index]
+    return cards[index - 1]
 
 
 _MAGICK_BIN = shutil.which("magick")
@@ -159,6 +159,10 @@ class PriceSelector:
     def set_bot(self, bot) -> None:
         """Set DamaiBot reference for delegation."""
         self._bot = bot
+
+    def _price_position(self) -> int:
+        """Convert the user-facing 1-based price number to an internal index."""
+        return self._config.price_index - 1
 
     # ------------------------------------------------------------------
     # Public convenience methods (used by FastPipeline etc.)
@@ -320,10 +324,11 @@ class PriceSelector:
         except Exception:
             return None
         clickable_cards = [card for card in cards if bot._is_clickable(card)]
-        if not (0 <= self._config.price_index < len(clickable_cards)):
+        price_position = self._price_position()
+        if not (0 <= price_position < len(clickable_cards)):
             return None
 
-        rect = bot._element_rect(clickable_cards[self._config.price_index])
+        rect = bot._element_rect(clickable_cards[price_position])
         return (
             rect["x"] + rect["width"] // 2,
             rect["y"] + rect["height"] // 2,
@@ -356,15 +361,14 @@ class PriceSelector:
                     ]
                     if not cards:
                         continue
-                    if not (0 <= self._config.price_index < len(cards)):
+                    price_position = self._price_position()
+                    if not (0 <= price_position < len(cards)):
                         logger.debug(
                             f"price_index={self._config.price_index} 超出 {container_id} "
                             f"中的 {len(cards)} 个可点击卡片"
                         )
                         continue
-                    bounds = bot._parse_bounds(
-                        cards[self._config.price_index].get("bounds", "")
-                    )
+                    bounds = bot._parse_bounds(cards[price_position].get("bounds", ""))
                     if bounds:
                         left, top, right, bottom = bounds
                         return ((left + right) // 2, (top + bottom) // 2)
@@ -425,7 +429,7 @@ class PriceSelector:
         """
         bot = self._bot
         # Primary: element click — Damai price cards may not respond to coordinate taps
-        if self._click_price_card_element(self._config.price_index):
+        if self._click_price_card_element(self._price_position()):
             logger.info(
                 f"通过配置索引直接选择票价: price_index={self._config.price_index}"
             )
@@ -544,7 +548,7 @@ class PriceSelector:
                 (
                     option
                     for option in visible_options
-                    if option["index"] == self._config.price_index
+                    if option["index"] == self._price_position()
                 ),
                 None,
             )
@@ -627,7 +631,7 @@ class PriceSelector:
                 (
                     option
                     for option in visible_options
-                    if option["index"] == self._config.price_index
+                    if option["index"] == self._price_position()
                 ),
                 None,
             )
@@ -661,19 +665,20 @@ class PriceSelector:
             if not bot._using_u2():
                 target_price = price_container.find_element(
                     ANDROID_UIAUTOMATOR,
-                    f'new UiSelector().className("android.widget.FrameLayout").index({self._config.price_index}).clickable(true)',
+                    f'new UiSelector().className("android.widget.FrameLayout").index({self._price_position()}).clickable(true)',
                 )
             else:
                 cards = bot._container_find_elements(
                     price_container, By.CLASS_NAME, "android.widget.FrameLayout"
                 )
                 clickable_cards = [card for card in cards if bot._is_clickable(card)]
-                if not (0 <= self._config.price_index < len(clickable_cards)):
+                price_position = self._price_position()
+                if not (0 <= price_position < len(clickable_cards)):
                     logger.warning(
                         f"price_index={self._config.price_index} 超出可点击卡片数量 {len(clickable_cards)}"
                     )
                     return False
-                target_price = clickable_cards[self._config.price_index]
+                target_price = clickable_cards[price_position]
             bot._click_element_center(target_price, duration=30)
             return True
         except Exception as e:
@@ -697,7 +702,7 @@ class PriceSelector:
                 if not bot._using_u2():
                     target_price = price_container.find_element(
                         ANDROID_UIAUTOMATOR,
-                        f'new UiSelector().className("android.widget.FrameLayout").index({self._config.price_index}).clickable(true)',
+                        f'new UiSelector().className("android.widget.FrameLayout").index({self._price_position()}).clickable(true)',
                     )
                 else:
                     cards = bot._container_find_elements(
@@ -706,12 +711,13 @@ class PriceSelector:
                     clickable_cards = [
                         card for card in cards if bot._is_clickable(card)
                     ]
-                    if not (0 <= self._config.price_index < len(clickable_cards)):
+                    price_position = self._price_position()
+                    if not (0 <= price_position < len(clickable_cards)):
                         logger.warning(
                             f"备用方案: price_index={self._config.price_index} 超出 {len(clickable_cards)}"
                         )
                         return False
-                    target_price = clickable_cards[self._config.price_index]
+                    target_price = clickable_cards[price_position]
                 bot._click_element_center(target_price, duration=30)
                 return True
             except Exception as backup_error:

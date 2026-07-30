@@ -700,17 +700,17 @@ class Config:
         if (
             not isinstance(price_index, int)
             or isinstance(price_index, bool)
-            or price_index < 0
+            or price_index < 1
         ):
-            raise ValueError(f"price_index 必须是非负整数，实际值: {price_index!r}")
+            raise ValueError(f"price_index 必须是从 1 开始的正整数，实际值: {price_index!r}")
 
         if session_index is not None and (
             not isinstance(session_index, int)
             or isinstance(session_index, bool)
-            or session_index < 0
+            or session_index < 1
         ):
             raise ValueError(
-                f"session_index 必须是非负整数或 null，实际值: {session_index!r}"
+                f"session_index 必须是从 1 开始的正整数或 null，实际值: {session_index!r}"
             )
 
         if keyword is None or not isinstance(keyword, str) or len(keyword.strip()) == 0:
@@ -961,8 +961,8 @@ class Config:
         # P1 #31 — 启动期校验 price_index 范围
         raw_price_index = config["price_index"]
         if isinstance(raw_price_index, int) and not isinstance(raw_price_index, bool):
-            if raw_price_index < 0:
-                raise ConfigError(f"price_index 不能为负数（当前 {raw_price_index}）")
+            if raw_price_index < 1:
+                raise ConfigError(f"price_index 必须从 1 开始（当前 {raw_price_index}）")
             if raw_price_index > PRICE_INDEX_LARGE_WARNING_THRESHOLD:
                 logger.warning(
                     "price_index=%d 异常大（>%d），请确认 config 中的 price_index 是否填错",

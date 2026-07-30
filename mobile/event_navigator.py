@@ -184,7 +184,8 @@ def select_session(
 
     1. ``date`` + ``city`` exact match (must be unique).
     2. ``date`` alone if it identifies a unique session.
-    3. ``fallback_index`` (zero-based) if provided.
+    3. internal ``fallback_index`` (zero-based) if provided. The public config
+       converts its one-based session number before calling this helper.
 
     Args:
         driver: A uiautomator2 device (anything with ``dump_hierarchy()``
@@ -192,11 +193,11 @@ def select_session(
         date: Target date in ``MM.DD`` format (output of
             :func:`mobile.date_utils.normalize_date`).
         city: City keyword expected to appear in the card text.
-        fallback_index: Zero-based card index used when neither ``date``
-            nor ``city`` resolves a unique candidate.
+        fallback_index: Internal zero-based card index used when neither
+            ``date`` nor ``city`` resolves a unique candidate.
 
     Returns:
-        The zero-based index of the selected session.
+        The internal zero-based index of the selected session.
 
     Raises:
         SessionNotFoundError: When no unique candidate can be picked.

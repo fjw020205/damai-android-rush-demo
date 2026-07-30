@@ -10,11 +10,11 @@
 
 ```jsonc
 "preselected_sku": false,
-"session_index": 0,
-"price_index": 0
+"session_index": 1,
+"price_index": 1
 ```
 
-开售后脚本会按顺序点击场次和票档。`session_index` 和 `price_index` 都从 `0` 开始：第一张可点击卡片是 `0`，第二张是 `1`。它们不是日期、金额或票档名称。
+开售后脚本会按顺序点击场次和票档。请按页面横向从左到右数，第一张可点击卡片是 `1`，第二张是 `2`；如果出现换行，就先数上一行，再数下一行。它们不是日期、金额或票档名称。
 
 如果页面没有场次选择，填：
 
@@ -44,8 +44,8 @@
 | `keyword` | 大麦 App 内能定位演出的关键词 |
 | `users` | 已保存的观演人姓名列表，列表长度代表人数 |
 | `city` / `date` | 页面上的城市和场次日期原文 |
-| `session_index` | 额外选择型的场次下标，从 `0` 开始；无场次页为 `null` |
-| `price_index` | 额外选择型的票档下标，从 `0` 开始 |
+| `session_index` | 额外选择型的场次编号，横向从左到右数，从 `1` 开始；无场次页为 `null` |
+| `price_index` | 额外选择型的票档编号，横向从左到右数，从 `1` 开始 |
 | `sell_start_time` | ISO 时间，例如 `2026-08-16T10:18:00+08:00`；不定时填 `null` |
 | `if_commit_order` | `false` 演练，`true` 正式提交 |
 | `auto_navigate` | 建议 `false`，提前手动停在详情页 |

@@ -5,7 +5,7 @@
 - `price_index` and `session_index` are verified by a rehearsal before a formal run.
 - `if_commit_order=true` only submits an order. Payment remains a manual user action.
 - Two public paths are supported: `preselected_sku=true` for direct rapid taps after reservation, and `preselected_sku=false` for index-based session/ticket-tier selection.
-- Indexes are zero-based and must be confirmed by rehearsal; price text is not used on the sale-critical path.
+- User-facing indexes are one-based and counted left-to-right across the visible cards; they must be confirmed by rehearsal. Price text is not used on the sale-critical path.
 
 ## Release Check
 - No real `config/*.jsonc` files are tracked.

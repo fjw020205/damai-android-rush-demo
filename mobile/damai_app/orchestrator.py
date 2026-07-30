@@ -541,7 +541,7 @@ class DamaiBot(
                     self.d,
                     date=normalize_date(self.config.date) if self.config.date else None,
                     city=self.config.city,
-                    fallback_index=self.config.session_index,
+                    fallback_index=self.config.session_index - 1,
                 )
             except SessionNotFoundError as exc:
                 logger.error("选择场次失败: %s", exc)
@@ -564,7 +564,7 @@ class DamaiBot(
         """SESSION_PICKER 状态下按 config.date / config.city 选定场次。
 
         优先级与 :func:`mobile.event_navigator.select_session` 一致：
-        date+city > date 唯一 > fallback_index(0)。多场次场景下永不跳过，
+        date+city > date 唯一 > 配置场次序号。多场次场景下永不跳过，
         即便 rush_skip_session=True 也强制选场（issue #25 根因防御）。
         """
         try:
@@ -578,12 +578,18 @@ class DamaiBot(
             )
 
         normalised_date = normalize_date(self.config.date) if self.config.date else None
+        configured_session_index = getattr(self.config, "session_index", None)
+        fallback_index = (
+            configured_session_index - 1
+            if configured_session_index is not None
+            else 0
+        )
         try:
             chosen_idx = select_session(
                 self.d,
                 date=normalised_date,
                 city=self.config.city,
-                fallback_index=getattr(self.config, "session_index", 0),
+                fallback_index=fallback_index,
             )
             logger.info(
                 "多场次活动：已选定场次 idx=%d (date=%s, city=%s)",

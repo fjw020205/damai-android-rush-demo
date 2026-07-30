@@ -240,9 +240,10 @@ class FastPipeline:
 
     def _extract_session_coords(self, xml_root) -> Optional[Tuple[int, int]]:
         """Return the configured Canvas session card center from one XML dump."""
-        session_index = getattr(self._config, "session_index", None)
-        if session_index is None or xml_root is None:
+        configured_session_index = getattr(self._config, "session_index", None)
+        if configured_session_index is None or xml_root is None:
             return None
+        session_index = configured_session_index - 1
 
         panel = next(
             (
@@ -263,7 +264,7 @@ class FastPipeline:
         if not 0 <= session_index < len(cards):
             logger.warning(
                 "session_index=%d out of range for %d visible session cards",
-                session_index,
+                configured_session_index,
                 len(cards),
             )
             return None

@@ -1,25 +1,17 @@
 {
-  // 一台已授权手机填 null；多台手机填 check-device.bat 显示的序列号。
+  // 一台手机保持 null；多台手机才填写 check-device.bat 显示的序列号。
   "serial": null,
-  "keyword": "目标演出关键词",
-  "target_title": null,
-  "target_venue": null,
-  "users": ["观演人一", "观演人二"],
-  "city": "演出城市",
-  "date": "场次日期",
-  // 连点型不在开售后选择场次和票档，这两个字段仅为兼容配置保留。
+  "users": [],
   "session_index": null,
-  "price": "已预约票档",
   "price_index": 1,
   "preselected_sku": true,
   "probe_only": false,
   "if_commit_order": false,
-  // 预约页已经选好观演人时保持 true；否则改为 false 并填写 users。
   "skip_attendee_selection": true,
   "skip_quantity_adjustment": true,
   "auto_navigate": false,
+  // 只改这一项：例如 2026-08-16T10:18:00+08:00。
   "sell_start_time": "2026-08-16T10:18:00+08:00",
-  // 先演练 T0；也可双击 start-preselected-t10.bat 或 start-preselected-t20.bat。
   "cta_first_tap_delay_ms": 0,
   "rush_mode": true,
   "rush_skip_price_dump": true,

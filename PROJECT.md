@@ -6,6 +6,7 @@
 - `if_commit_order=true` only submits an order. Payment remains a manual user action.
 - Two public paths are supported: `preselected_sku=true` for direct rapid taps after reservation, and `preselected_sku=false` for index-based session/ticket-tier selection.
 - User-facing indexes are one-based and counted left-to-right across the visible cards; they must be confirmed by rehearsal. Price text is not used on the sale-critical path.
+- Default templates assume the user is already on the detail page; event metadata is optional unless `auto_navigate=true`.
 
 ## Release Check
 - No real `config/*.jsonc` files are tracked.

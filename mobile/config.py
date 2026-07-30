@@ -693,8 +693,9 @@ class Config:
         platform_version=None,
     ):
 
-        # Validate users
-        validate_non_empty_list(users, "users")
+        # Users are optional when the app already has attendees selected.
+        if not skip_attendee_selection:
+            validate_non_empty_list(users, "users")
 
         # Validate price_index
         if (
@@ -713,7 +714,10 @@ class Config:
                 f"session_index 必须是从 1 开始的正整数或 null，实际值: {session_index!r}"
             )
 
-        if keyword is None or not isinstance(keyword, str) or len(keyword.strip()) == 0:
+        if (
+            auto_navigate
+            and (keyword is None or not isinstance(keyword, str) or len(keyword.strip()) == 0)
+        ):
             raise ValueError(f"keyword 不能为空，必须是非空字符串，实际值: {keyword!r}")
 
         if not isinstance(if_commit_order, bool):
@@ -843,7 +847,7 @@ class Config:
             if not isinstance(_value, bool):
                 raise ValueError(f"{_name} 必须是布尔值，实际值: {_value!r}")
 
-        self.keyword = keyword.strip()
+        self.keyword = keyword.strip() if isinstance(keyword, str) else ""
         self.users = users
         self.city = city
         self.date = date
@@ -934,20 +938,10 @@ class Config:
     def load_config(config_path=None, strict_placeholders=True):
         config = load_config_dict(config_path)
 
-        required_keys = [
-            "users",
-            "city",
-            "date",
-            "price",
-            "price_index",
-            "if_commit_order",
-        ]
+        required_keys = ["price_index", "if_commit_order"]
         missing = [k for k in required_keys if k not in config]
         if missing:
             raise KeyError(f"配置文件缺少必需字段: {', '.join(missing)}")
-
-        if "keyword" not in config:
-            raise KeyError("配置文件缺少必需字段: keyword")
 
         # U-05 — 启动期防护：占位符黑名单（默认硬失败）+ 未知/废弃字段警告
         validate_config_dict(config, strict_placeholders=strict_placeholders)
@@ -989,11 +983,11 @@ class Config:
 
         return Config(
             keyword=config.get("keyword"),
-            users=config["users"],
-            city=config["city"],
-            date=config["date"],
+            users=config.get("users", []),
+            city=config.get("city", ""),
+            date=config.get("date", ""),
             session_index=config.get("session_index"),
-            price=config["price"],
+            price=config.get("price", ""),
             price_index=config["price_index"],
             preselected_sku=config.get("preselected_sku", False),
             if_commit_order=config["if_commit_order"],

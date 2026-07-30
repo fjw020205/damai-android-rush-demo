@@ -1,14 +1,24 @@
 # Damai Android Rush Demo - Development Log
 
 ## Current Status
-- **Version**: V0.2
+- **Version**: V0.3
 - **Positioning**: Minimal Android UIAutomator2 example with two practical purchase paths.
-- **Completed**: Android-only core, one-based left-to-right session/ticket-tier path, reservation-ready direct-tap path, T0/T0+10ms/T0+20ms rehearsal launchers, public templates and operational docs.
+- **Completed**: Android-only core, one-based left-to-right session/ticket-tier path, reservation-ready direct-tap path, T0/T0+10ms/T0+20ms rehearsal launchers, minimal templates, USB debugging guide and operational docs.
 - **Open**: App UI identifiers, reservation state and card ordering must be verified against each event before a formal run.
 
 ---
 
 ## Version History
+
+### V0.3 - 2026-07-30
+**Design Decisions**:
+- Default configuration assumes manual detail-page preparation and keeps event metadata out of the normal user workflow.
+- Empty attendee lists are accepted when the app has already preselected attendees; users only add names when they explicitly disable that skip.
+
+**Progress**:
+- [x] Added the Android USB debugging guide with a Xiaomi HyperOS example.
+- [x] Reduced the documented configuration to sale time, optional card numbers and exceptional device/attendee fields.
+- [ ] Verify minimal templates on a clean device.
 
 ### V0.2 - 2026-07-30
 **Design Decisions**:

@@ -19,10 +19,12 @@
 
 ## 下载和安装
 
-1. 在 GitHub 点 **Code → Download ZIP**，解压到一个固定目录。
-2. 双击根目录 `setup.bat`，它会创建 `.venv` 并安装依赖。
-3. 手机打开开发者选项和 USB 调试，用数据线连接电脑，在手机上允许 USB 调试授权。
-4. 一台手机时配置里的 `serial` 保持 `null`；多台手机时先双击 `check-device.bat`，把状态为 `device` 的序列号填入配置。
+1. 在 GitHub 点 **Code → Download ZIP**，解压到固定目录。
+2. 双击 `setup.bat`，等待安装完成。
+3. 打开手机的开发者选项和 USB 调试，再用数据线连接电脑。
+4. 手机上出现授权弹窗时点允许；只有一台手机时 `serial` 保持 `null`。
+
+开发者选项在不同品牌里藏得不一样，没搜到不代表手机不支持。先看[安卓开发者选项和 USB 调试说明](docs/android-usb-debugging.md)。
 
 ## 配置
 
@@ -31,18 +33,13 @@
 - 额外选择型：`config/rehearsal.jsonc.example` → `config/rehearsal.jsonc`；正式时再复制为 `config/formal.jsonc`。
 - 连点型：`config/preselected-rehearsal.jsonc.example` → `config/preselected-rehearsal.jsonc`；正式时再复制为 `config/preselected-formal.jsonc`。
 
-通常只改这些字段：
+配置只记三件事：
 
-- `keyword`、`city`、`date`：填写目标演出页面上的信息。
-- `users`：填写已在大麦 App 中保存的观演人；人数等于列表长度。
-- `session_index`：额外选择型的场次顺序，从左到右横向数，第一项是 `1`；没有场次页填 `null`。
-- `price_index`：额外选择型的票档顺序，从左到右横向数，第一项是 `1`；它不是票面金额。
-- `sell_start_time`：定时开抢时间，使用 `2026-08-16T10:18:00+08:00` 这种格式；不定时可填 `null`。
-- `skip_attendee_selection`：预约页已经预选观演人时设为 `true`。
-- `skip_quantity_adjustment`：预约已经锁定数量时设为 `true`。
-- `if_commit_order`：演练为 `false`，正式为 `true`。
+- 两种模式都只需要改 `sell_start_time`。
+- 额外选择型再改 `session_index`、`price_index`，按页面横向从左到右数，第一项是 `1`。
+- 多台手机才改 `serial`；如果 App 没有预选观演人，才把 `skip_attendee_selection` 改为 `false` 并填写 `users`。
 
-连点型还要保持 `preselected_sku: true`。它会跳过场次和票档选择；`session_index`、`price_index` 仅为兼容配置保留，不参与开售后的点击。
+其他字段保持模板原样。连点型保持 `preselected_sku: true`；正式模板已经把 `if_commit_order` 设为 `true`，不要在演练模板里改它。
 
 ## 演练和正式运行
 

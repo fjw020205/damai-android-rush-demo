@@ -8,10 +8,7 @@
 
 ## 2. 连接手机
 
-1. 打开手机开发者选项和 USB 调试。
-2. 数据线连接电脑，在手机弹窗中允许 USB 调试。
-3. 只有一台手机时，配置 `serial` 保持 `null`。
-4. 多台手机时双击 `check-device.bat`，把状态为 `device` 的序列号填入配置。
+先看[安卓开发者选项和 USB 调试说明](android-usb-debugging.md)，再打开 USB 调试并连接数据线。手机弹出授权时点允许；只有一台手机时 `serial` 保持 `null`，多台手机才需要用 `check-device.bat` 选择序列号。
 
 ## 3. 复制配置
 
@@ -20,7 +17,7 @@
 - 页面开售后还要选场次/票档：复制 `config/rehearsal.jsonc.example` 为 `config/rehearsal.jsonc`。
 - 预约已经锁定场次/票档：复制 `config/preselected-rehearsal.jsonc.example` 为 `config/preselected-rehearsal.jsonc`。
 
-打开配置，至少填写 `keyword`、`city`、`date`、`users` 和 `sell_start_time`。额外选择型还要填写 `session_index`、`price_index`。
+打开配置。两种模式只改 `sell_start_time`；额外选择型再改 `session_index`、`price_index`。默认已按预约场景跳过观演人操作，只有 App 没有预选观演人时才填写 `users`。
 
 ## 4. 做演练
 

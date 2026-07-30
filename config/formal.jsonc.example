@@ -1,26 +1,16 @@
 {
-  // 一台已授权手机时填 null；多台手机时填 check-device.bat 显示的序列号。
   "serial": null,
-  "keyword": "目标演出关键词",
-  "target_title": null,
-  "target_venue": null,
-  "users": ["观演人一", "观演人二"],
-  "city": "演出城市",
-  "date": "场次日期",
-  // 场次按页面横向从左到右数，第一项是 1；没有场次页填 null。
+  "users": [],
   "session_index": 1,
-  "price": "票档原文",
-  // 票档按页面横向从左到右数，第一项是 1。
   "price_index": 1,
-  // 预约已锁定场次和票档时改为 true，并改用 start-preselected-formal.bat。
   "preselected_sku": false,
   "probe_only": false,
   "if_commit_order": true,
-  "skip_attendee_selection": false,
+  "skip_attendee_selection": true,
   "skip_quantity_adjustment": true,
   "auto_navigate": false,
+  // 只改这一项：例如 2026-08-16T10:18:00+08:00。
   "sell_start_time": null,
-  // 连点型可填 0、10 或 20；额外选择型保持 0。
   "cta_first_tap_delay_ms": 0,
   "rush_mode": true,
   "rush_skip_price_dump": true,

@@ -1,12 +1,12 @@
 # 配置说明
 
-先复制对应模板，其他内容保持不动。脚本默认要求你手动停在大麦详情页，所以不需要填写演出名称、城市、日期或票档文字。
+推荐双击 `start-console.bat`，在页面中填写少量信息。控制台会根据模板生成本地配置，其他字段保持默认。脚本默认要求你手动停在大麦详情页，所以不需要填写演出名称、城市、日期或票档文字。
 
 只有你主动把 `auto_navigate` 改成 `true`，才需要另外补搜索用的演出信息。
 
 ## 额外选择型
 
-使用 `rehearsal.jsonc.example` 和 `formal.jsonc.example`。
+控制台选择“额外选择型”。直接运行 BAT 时使用 `rehearsal.jsonc.example` 和 `formal.jsonc.example`。
 
 只改：
 
@@ -18,7 +18,7 @@
 
 ## 连点型
 
-使用 `preselected-rehearsal.jsonc.example` 和 `preselected-formal.jsonc.example`。
+控制台选择“预约连点型”。直接运行 BAT 时使用 `preselected-rehearsal.jsonc.example` 和 `preselected-formal.jsonc.example`。
 
 通常只改 `sell_start_time`。预约已经锁定场次、票档、观演人和数量，保持：
 

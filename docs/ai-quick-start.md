@@ -23,21 +23,22 @@
 ## AI 下载后的顺序
 
 1. 引导用户打开 [GitHub 页面](https://github.com/jdong6389-crypto/damai-android-rush-demo)，点击 **Code → Download ZIP**。
-2. 指导用户解压 ZIP，并确认项目根目录有 `setup.bat`、`start.bat`、`config`。
+2. 指导用户解压 ZIP，并确认项目根目录有 `setup.bat`、`start-console.bat`、`config`。
 3. 让用户双击 `setup.bat`，不要要求用户手动拼接 Python 命令。
 4. 指导用户连接手机并运行 `check-device.bat`；单手机保持 `serial: null`。
-5. 根据模式复制对应 `.example` 模板。`.example` 只是公开模板标记，真实配置文件不应上传。
-6. 默认只修改 `sell_start_time`；额外选择型再修改 `session_index`、`price_index`。
-7. 让用户手动打开大麦详情页，先运行演练入口。
+5. 让用户双击 `start-console.bat`；页面会自动生成本地配置，不要求用户复制 `.example` 文件。
+6. 在页面填写 `sell_start_time`；额外选择型再填写 `session_index`、`price_index`。
+7. 让用户手动打开大麦详情页，先点击页面中的演练入口。
 8. 演练到确认页且场次、票档、观演人正确后，向用户复述正式入口会“提交但不支付”，再等待用户明确确认。
 
 ## 模式对应入口
 
-| 模式 | 演练 | 正式 |
+| 模式 | 控制台演练 | 控制台正式 |
 | --- | --- | --- |
-| 额外选择型 | `start.bat` | `start-formal.bat` |
-| 连点型 T0 | `start-preselected.bat` | `start-preselected-formal.bat` |
-| 连点型 T0+10ms / T0+20ms | `start-preselected-t10.bat` / `start-preselected-t20.bat` | 把选中的延迟写入正式配置后再运行正式入口 |
+| 额外选择型 | 选择模式后点击“保存并启动演练” | 勾选确认后点击“保存并正式提交” |
+| 连点型 | 选择 T0、T0+10ms 或 T0+20ms 后点击演练 | 勾选确认后点击“保存并正式提交” |
+
+熟悉配置文件时，仍可使用原有 `start*.bat` 入口。
 
 ## AI 不要做的事
 

@@ -6,7 +6,7 @@
 
 ## 启动后提示配置不存在
 
-`.example` 只是模板，不会被入口直接读取。先复制为实际文件：
+推荐使用 `start-console.bat`，页面会根据 `.example` 模板自动生成本地配置。直接运行 BAT 时，`.example` 只是模板，不会被入口直接读取，需要先生成对应的真实配置文件：
 
 - `rehearsal.jsonc.example` → `rehearsal.jsonc`
 - `formal.jsonc.example` → `formal.jsonc`

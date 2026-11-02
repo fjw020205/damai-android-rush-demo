@@ -59,3 +59,6 @@ reference/
 
 # Local, non-committed Claude Code project memory (auto-loaded; overrides/augments CLAUDE.md)
 CLAUDE.local.md
+
+# Locator device profiles (contain model/serial; local only)
+profiles/*.json

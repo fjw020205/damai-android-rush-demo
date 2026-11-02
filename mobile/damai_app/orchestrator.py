@@ -23,9 +23,11 @@ from selenium.webdriver.common.by import By
 try:
     from mobile.env_snapshot import detect_damai_app_version
     from mobile.logger import log_event
+    from mobile.locator import Locator
 except ImportError:  # pragma: no cover
     from env_snapshot import detect_damai_app_version  # type: ignore[no-redef]
     from logger import log_event  # type: ignore[no-redef]
+    from locator import Locator  # type: ignore[no-redef]
 
 from . import (
     ANDROID_UIAUTOMATOR,
@@ -77,6 +79,9 @@ class DamaiBot(
         # Cache of {key: (x, y)} coordinates for hot-path elements.
         # Populated on the first run and reused on warm retries (1 HTTP call vs 4+).
         self._cached_hot_path_coords: dict = {}
+        # Semantic locator, created together with FastPipeline when a device is
+        # available; None keeps older code paths and tests unaffected.
+        self._locator = None
         # Keys of preselect steps that failed on a previous run and should be skipped.
         self._cached_hot_path_no_match: set = set()
         # Set only when the sale waiter has already sent the first CTA tap.
@@ -107,6 +112,14 @@ class DamaiBot(
             # Share coordinate cache with pipeline
             self._pipeline._cached_coords = self._cached_hot_path_coords
             self._pipeline._cached_no_match = self._cached_hot_path_no_match
+            # Semantic multi-device locator (page fingerprint + selector
+            # priority + per-device calibrated ratios).  Kept separate from the
+            # hot path so existing flows are untouched until they opt in.
+            try:
+                self._locator = Locator(self.d)
+            except Exception:  # pragma: no cover - locator must never break boot
+                self._locator = None
+                logger.debug("Locator 初始化失败（已禁用）", exc_info=True)
             # Update sub-modules with real probe now that it exists
             self._navigator._probe = self._page_probe
             self._recovery = RecoveryHelper(self.d, self._page_probe, self._navigator)
@@ -144,6 +157,29 @@ class DamaiBot(
         self._pipeline.set_bot(self)
         self._pipeline._cached_coords = self._cached_hot_path_coords
         self._pipeline._cached_no_match = self._cached_hot_path_no_match
+
+    def locator_selfcheck(self) -> dict:
+        """Return the semantic locator's page/spec self-check report.
+
+        Safe to call at any time: returns an empty report when no device or
+        locator is available (e.g. unit tests).
+        """
+        locator = getattr(self, "_locator", None)
+        if locator is None:
+            return {"page": None, "screen": [], "specs": {}}
+        return locator.self_check()
+
+    def locator_tap(self, name: str):
+        """Tap a named semantic spec, e.g. ``locator_tap("detail_cta")``.
+
+        Raises :class:`mobile.locator.LocatorError` when the spec cannot be
+        resolved safely; callers that prefer the legacy coordinate path should
+        catch it and fall back.
+        """
+        locator = getattr(self, "_locator", None)
+        if locator is None:
+            raise RuntimeError("Locator 不可用：未连接设备")
+        return locator.tap(name)
 
     _SOLD_OUT_RE = re.compile(r"缺货|售罄|无票")
 

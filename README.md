@@ -44,6 +44,26 @@
 - [USB 调试说明](docs/android-usb-debugging.md)：开发者选项、授权和连接排查
 - [技术说明](docs/technical-notes.md)：两种模式、时间方案和实现边界
 - [故障排查](docs/troubleshooting.md)：手机、页面和运行异常
+- [多机型控件定位](docs/locator.md)：新增的语义定位层、设备校准和自检
+
+## 多机型定位（新增）
+
+项目原先依赖演练时缓存的坐标，换手机或改字体后容易失效。`mobile/locator.py` 补了一层语义定位：先用页面指纹确认页面，再按 `resource-id` → 文本 → 内容描述 → 校准比例的顺序找控件，找不到就报错而不是盲点。
+
+开抢前可以先自检当前手机和页面：
+
+```bat
+check-locator.bat
+```
+
+需要校准时执行一次（比例文件保存在 `profiles/`，不会上传 GitHub）：
+
+```bat
+check-locator.bat learn
+```
+
+详细说明见 [docs/locator.md](docs/locator.md)。
+
 
 熟悉脚本的用户仍可使用项目中的直接入口，但普通使用不需要接触它们。
 

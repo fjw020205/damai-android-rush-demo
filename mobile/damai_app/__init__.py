@@ -180,10 +180,16 @@ sys.modules[__name__].__class__ = _DamaiPackage
 
 # Load the orchestrator (transitively loads each mixin submodule).
 from .orchestrator import DamaiBot  # noqa: E402
+try:  # pragma: no cover - flat-import fallback for tests
+    from ..locator import Locator  # noqa: E402
+except ImportError:  # pragma: no cover
+    from locator import Locator  # type: ignore[no-redef]  # noqa: E402
+
 
 
 __all__ = [
     "DamaiBot",
+    "Locator",
     "SALE_READY_TEXTS",
     "logger",
     "Config",

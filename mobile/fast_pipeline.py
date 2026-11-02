@@ -245,6 +245,21 @@ class FastPipeline:
             return None
         session_index = configured_session_index - 1
 
+        # Semantic cards first: resolve by page fingerprint + scoped container
+        # ids from the dump the pipeline already owns (no extra ADB round-trip).
+        locator = getattr(self._bot, "_locator", None)
+        if locator is not None:
+            try:
+                hits = locator.hits_in(xml_root, "sku_session_card")
+                if 0 <= session_index < len(hits):
+                    logger.info(
+                        "session_index=%d 语义定位命中 (locator)",
+                        configured_session_index,
+                    )
+                    return hits[session_index].point
+            except Exception:
+                logger.debug("语义场次解析失败，回退 Canvas 面板解析", exc_info=True)
+
         panel = next(
             (
                 node

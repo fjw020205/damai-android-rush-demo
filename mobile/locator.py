@@ -505,9 +505,15 @@ class Locator:
 
     def detect_page(self) -> Optional[str]:
         """Return the first matching page fingerprint name, else ``None``."""
+        return self._detect_page_in(self.refresh())
+
+    def _detect_page_in(self, root: Optional[ET.Element]) -> Optional[str]:
+        """Page fingerprint detection over an already-dumped hierarchy."""
+        if root is None:
+            return None
         ids: set = set()
         texts: set = set()
-        for node in self._iter_nodes():
+        for node in root.iter("node"):
             rid = (node.get("resource-id") or "").strip()
             if rid:
                 ids.add(rid)
@@ -520,6 +526,20 @@ class Locator:
             if page.any_texts and any(item in texts for item in page.any_texts):
                 return page.name
         return None
+
+    def hits_in(self, root: ET.Element, spec: Union[ElementSpec, str]) -> List[Hit]:
+        """Resolve a spec against a caller-provided hierarchy dump.
+
+        The rush pipeline already owns an XML dump (one ADB round-trip); this
+        lets it use semantic card resolution without paying for a second dump.
+        """
+        if isinstance(spec, str):
+            spec = self.specs[spec]
+        if spec.page and self._detect_page_in(root) != spec.page:
+            return []
+        nodes = list(root.iter("node"))
+        parent_map = {child: parent for parent in root.iter("node") for child in parent}
+        return self._resource_hits(spec, nodes, parent_map)
 
     def assert_page(self, name: str) -> None:
         """Raise :class:`PageMismatchError` unless ``name`` is the current page."""

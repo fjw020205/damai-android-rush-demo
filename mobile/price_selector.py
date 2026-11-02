@@ -346,6 +346,22 @@ class PriceSelector:
         if xml_root is None:
             return None
 
+        # Semantic cards first: the spec resolves the same visible order as the
+        # UI (top-to-bottom, left-to-right) without depending on class names.
+        locator = getattr(bot, "_locator", None)
+        if locator is not None:
+            try:
+                hits = locator.hits_in(xml_root, "sku_price_card")
+                price_position = self._price_position()
+                if 0 <= price_position < len(hits):
+                    logger.info(
+                        "price_index=%d 语义定位命中 (locator)",
+                        price_position + 1,
+                    )
+                    return hits[price_position].point
+            except Exception:
+                logger.debug("语义票档解析失败，回退 XML 容器解析", exc_info=True)
+
         container_ids = (
             "cn.damai:id/project_detail_perform_price_flowlayout",
             "cn.damai:id/layout_price",

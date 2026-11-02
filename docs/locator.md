@@ -53,6 +53,8 @@ loc.tap_index("sku_session_card", 2) # 第 2 个场次
 
 `tap_index` 按控件位置排序（先上后下、先左后右），与屏幕分辨率无关，替代原来“演前先数坐标”的做法。
 
+极速管道不额外 dump：它把当次已有的 XML 交给 `locator.hits_in(root, spec)`，用同一份快照解析场次/票档卡片，因此不会增加开售临界时的 ADB 往返。
+
 ## 确认订单页（confirm）
 
 | spec | 含义 | 依据 |

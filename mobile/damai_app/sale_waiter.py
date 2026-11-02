@@ -180,6 +180,10 @@ class SaleWaiterMixin:
         if guard is not None:
             try:
                 canvas_coords = guard.get_cta_center_coords()
+                if canvas_coords is None:
+                    # Cross-device fallback: the guard's candidate ids may not
+                    # match this App build, so ask the semantic locator once.
+                    canvas_coords = self._semantic_cta_coords()
                 canvas_cta = guard.get_current_text() is None and canvas_coords is not None
             except Exception:
                 canvas_cta = False

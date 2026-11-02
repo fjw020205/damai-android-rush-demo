@@ -153,6 +153,15 @@ spec = ElementSpec(
 loc.tap(spec)
 ```
 
+## 已被主流程使用的地方
+
+- **启动自检**：`run_ticket_grabbing` 开始时调用 `locator_preflight()`，日志里会打印
+  `定位自检: page=… profile=… 控件命中=x/y`；页面不符会给出 warning，但不阻塞流程。
+- **购票入口兜底**：`sale_waiter` 拿不到 Canvas CTA 坐标、`purchase_flow` 的
+  resource-id / 文案选择器都失败时，会尝试 `locator.resolve("detail_cta")`，
+  命中后仍走原来的 `_click_coordinates`，计时逻辑不变。
+- 原有的坐标缓存与快速管道仍然是主路径；locator 只在失败时介入，避免影响开售临界时序。
+
 ## 边界
 
 - 只做「找到并点击」，不改变业务状态机；什么时候点仍由原有流程决定

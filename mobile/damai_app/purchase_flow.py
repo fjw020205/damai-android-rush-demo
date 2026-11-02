@@ -138,6 +138,16 @@ class PurchaseFlowMixin:
                     f'new UiSelector().textMatches("{_SALE_READY_TEXT_REGEX_OR}|.*购票.*|.*抢票.*|.*购买.*")',
                     timeout=0.25,
                 )
+            if not _buy_clicked:
+                # Semantic fallback for App builds whose CTA ids/texts changed:
+                # locate the control by page fingerprint + selector instead of
+                # falling through to the slower generic path.
+                semantic = self._semantic_cta_coords()
+                if semantic is not None:
+                    self._click_coordinates(*semantic, duration=25)
+                    self._cached_hot_path_coords["detail_buy"] = semantic
+                    _buy_clicked = True
+                    logger.info("购票入口使用语义定位兜底: %s", semantic)
             if _buy_clicked:
                 next_probe = self._wait_for_purchase_entry_result(
                     timeout=6.0, poll_interval=0.03
@@ -160,8 +170,14 @@ class PurchaseFlowMixin:
         if not self.smart_wait_and_click(
             *book_selectors[0], book_selectors[1:], timeout=0.8
         ):
-            logger.warning("购票按钮点击失败")
-            return None
+            semantic = self._semantic_cta_coords()
+            if semantic is not None:
+                self._click_coordinates(*semantic, duration=25)
+                self._cached_hot_path_coords["detail_buy"] = semantic
+                logger.info("购票入口使用语义定位兜底: %s", semantic)
+            else:
+                logger.warning("购票按钮点击失败")
+                return None
         return self._wait_for_purchase_entry_result(timeout=5, poll_interval=0.08)
 
     def _submit_order_fast(self, submit_selectors):

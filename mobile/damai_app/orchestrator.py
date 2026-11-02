@@ -158,6 +158,50 @@ class DamaiBot(
         self._pipeline._cached_coords = self._cached_hot_path_coords
         self._pipeline._cached_no_match = self._cached_hot_path_no_match
 
+    def locator_preflight(self, expected_page: str = None):
+        """Log a one-shot semantic locator report before the run starts.
+
+        Never raises and never blocks the run: the legacy selector/coordinate
+        path is still authoritative.  The report makes a wrong page or a
+        missing CTA visible in the log *before* the sale moment.
+        """
+        locator = getattr(self, "_locator", None)
+        if locator is None:
+            return None
+        try:
+            report = locator.self_check()
+            page = report.get("page")
+            resolved = sum(1 for value in report.get("specs", {}).values() if value)
+            logger.info(
+                "定位自检: page=%s profile=%s 控件命中=%d/%d",
+                page,
+                report.get("profile"),
+                resolved,
+                len(report.get("specs", {})),
+            )
+            if page is None:
+                logger.warning("定位自检: 当前页面未识别，请确认大麦停在目标页")
+            elif expected_page and page != expected_page:
+                logger.warning(
+                    "定位自检: 期望页面 %s，实际 %s", expected_page, page
+                )
+            return report
+        except Exception:  # pragma: no cover - diagnostics must never break a run
+            logger.debug("定位自检失败（已忽略）", exc_info=True)
+            return None
+
+    def _semantic_cta_coords(self):
+        """Best-effort CTA center from the semantic locator, or ``None``."""
+        locator = getattr(self, "_locator", None)
+        if locator is None:
+            return None
+        try:
+            hit = locator.resolve("detail_cta")
+            return hit.point if hit is not None else None
+        except Exception:  # pragma: no cover
+            logger.debug("语义定位 CTA 失败", exc_info=True)
+            return None
+
     def locator_selfcheck(self) -> dict:
         """Return the semantic locator's page/spec self-check report.
 
@@ -829,6 +873,15 @@ class DamaiBot(
                     page_probe = self.probe_current_page(fast=True)
             else:
                 page_probe = initial_page_probe or self.probe_current_page(fast=True)
+            if getattr(self, "_locator", None) is not None:
+                expected = {
+                    "detail_page": "detail",
+                    "sku_page": "sku",
+                }.get(page_probe.get("state"))
+                try:
+                    self.locator_preflight(expected_page=expected)
+                except Exception:  # pragma: no cover - diagnostics only
+                    logger.debug("locator preflight 失败（已忽略）", exc_info=True)
             fast_hot_path = (
                 self.config.rush_mode
                 and page_probe["state"] in {"detail_page", "sku_page"}

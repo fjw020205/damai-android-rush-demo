@@ -15,5 +15,9 @@
   "target_date": "2026-11-21",
   // 目标价（整数），只接受 <= 目标价的票档
   "target_price": 688,
-  "allow_lower_price": true
+  "allow_lower_price": true,
+  // 命中后自动进入确认页（不会提交订单）
+  "auto_navigate": true,
+  "session_index": 2,
+  "price_index": 6
 }

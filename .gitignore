@@ -63,3 +63,4 @@ CLAUDE.local.md
 # Locator device profiles (contain model/serial; local only)
 profiles/*.json
 config/waitlist.jsonc
+config/waitlist-confirm.jsonc

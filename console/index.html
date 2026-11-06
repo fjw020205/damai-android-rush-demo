@@ -170,6 +170,18 @@
               <label for="confirmFormal">我确认正式入口只提交订单，不自动付款，并已先完成演练。</label>
             </div>
           </div>
+
+          <div class="field full" style="margin-top:18px">
+            <label>候补监控</label>
+            <div class="check">
+              <input id="autoSubmit" type="checkbox">
+              <label for="autoSubmit">候补命中后自动提交订单<small>默认关闭。开启后命中会真实提交一次订单（不付款），随后立即停止监控，不重试提交。</small></label>
+            </div>
+            <div class="notice" style="margin-top:8px">
+              开启前请确认场次、票档、观演人；提交会生成待支付订单并锁定库存，账号可能被风控或限购。仅在你明确要买时开启。
+            </div>
+            <button id="saveWaitlist" class="action" type="button" style="margin-top:10px">保存候补设置</button>
+          </div>
         </div>
       </section>
 
@@ -331,6 +343,37 @@
       }
     }
 
+    async function loadWaitlist() {
+      try {
+        const response = await fetch('/api/waitlist', { cache: 'no-store' });
+        const data = await response.json();
+        $('autoSubmit').checked = data.auto_submit === true;
+      } catch (error) {
+        // 控制台未连接时保持默认关闭
+      }
+    }
+
+    async function saveWaitlist() {
+      const button = $('saveWaitlist');
+      button.disabled = true;
+      button.textContent = '正在保存…';
+      try {
+        const response = await fetch('/api/waitlist', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({auto_submit: $('autoSubmit').checked}),
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || '保存失败');
+        showToast(result.auto_submit ? '候补自动提交已开启' : '候补自动提交已关闭');
+      } catch (error) {
+        showToast(error.message, true);
+      } finally {
+        button.textContent = '保存候补设置';
+        button.disabled = false;
+      }
+    }
+
     modeButtons.forEach(button => button.addEventListener('click', () => setMode(button.dataset.mode)));
     delayButtons.forEach(button => button.addEventListener('click', () => {
       state.delay = Number(button.dataset.delay);
@@ -341,6 +384,8 @@
     $('confirmFormal').addEventListener('change', refresh);
     $('runRehearsal').addEventListener('click', () => run(false));
     $('runFormal').addEventListener('click', () => run(true));
+    $('saveWaitlist').addEventListener('click', saveWaitlist);
+    loadWaitlist();
     refresh();
     setInterval(refresh, 1600);
   </script>

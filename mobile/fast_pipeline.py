@@ -290,6 +290,39 @@ class FastPipeline:
             return None
         return self._bot._extract_coords_from_xml_node(cards[session_index])
 
+    def _query_session_center(self) -> Optional[Tuple[int, int]]:
+        """Resolve a session card via one scoped XPath query (fast path)."""
+        configured = getattr(self._config, "session_index", None)
+        if configured is None:
+            return None
+        expr = (
+            '//*[@resource-id="cn.damai:id/project_detail_perform_flowlayout"]'
+            '//*[@resource-id="cn.damai:id/ll_perform_item"]'
+        )
+        try:
+            cards = self._device.xpath(expr).all()
+        except Exception:
+            return None
+        if not cards or configured > len(cards):
+            return None
+        card = cards[configured - 1]
+        try:
+            text = card.get_text() or ""
+        except Exception:
+            text = ""
+        date = getattr(self._config, "date", None)
+        if date:
+            expected = "".join(ch for ch in str(date) if ch.isdigit())
+            actual = "".join(ch for ch in text if ch.isdigit())
+            if expected and expected not in actual:
+                logger.warning("场次 XPath 命中但日期不匹配，回退 XML 解析")
+                return None
+        try:
+            center = card.center()
+            return (int(center[0]), int(center[1]))
+        except Exception:
+            return None
+
     def _wait_for_session_coords(self, deadline: float) -> Optional[Tuple[int, int]]:
         """Wait for the Canvas panel, then parse it at most twice."""
         panel_deadline = min(deadline, time.time() + 0.7)
@@ -300,6 +333,15 @@ class FastPipeline:
         else:
             logger.debug("session panel did not appear before the fast deadline")
             return None
+
+        # Fast path: one scoped XPath query, verified against the target date.
+        queried = self._query_session_center()
+        if queried is not None:
+            logger.info(
+                "session_index=%s 文本查询命中 (xpath)",
+                getattr(self._config, "session_index", None),
+            )
+            return queried
 
         for attempt in range(2):
             session_coords = self._extract_session_coords(
@@ -906,18 +948,17 @@ class FastPipeline:
         return False
 
     def _is_registration_page(self) -> bool:
-        """Detect the out-of-stock registration page (缺货登记)."""
-        try:
-            xml = self._bot._dump_hierarchy_xml()
-        except Exception:
-            return False
-        if xml is None:
-            return False
-        markers = ("提交缺货登记", "到货通知", "按提交顺序", "若到货")
-        return any(
-            any(marker in (node.get("text") or "") for marker in markers)
-            for node in xml.iter("node")
-        )
+        """Detect the out-of-stock registration page (缺货登记) quickly."""
+        for marker in ("提交缺货登记", "到货通知", "按提交顺序"):
+            try:
+                if self._bot._has_element(
+                    ANDROID_UIAUTOMATOR,
+                    f'new UiSelector().textContains("{marker}")',
+                ):
+                    return True
+            except Exception:
+                continue
+        return False
 
     def _finish_confirm(self, start_time):
         """Shared tail for the cold pipeline: optionally select attendees."""

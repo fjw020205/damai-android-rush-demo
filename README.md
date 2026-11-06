@@ -38,6 +38,94 @@
 
 项目只支持 Windows、Android 真机和大麦 App，不支持网页端或模拟器。它不能保证库存、排队资格或最终购票结果，也不会自动处理验证码和支付。
 
+## 本地启动与使用（不需要别人帮忙）
+
+### 1. 准备
+
+- Windows 电脑、Android 手机、USB 数据线
+- 手机打开开发者选项和 **USB 调试**，插线后弹窗选“始终允许”
+- 电脑上确认设备：
+
+```powershell
+adb devices
+```
+
+显示 `device` 才可用；`unauthorized` 说明手机上还没点允许。
+
+### 2. 启动控制台
+
+双击项目根目录的 **`start-console.bat`**，会：
+
+1. 启动一个黑色服务窗口（运行期间不要关）
+2. 自动打开浏览器 `http://127.0.0.1:8765/`
+
+浏览器没自动打开就手动访问这个地址。
+
+### 3. 页面操作
+
+1. 选模式：开售后还要选场次/票档 → **额外选择型**；预约时已锁定 → **预约连点型**
+2. 填开售时间（北京时间），留空表示立即演练
+3. 填场次顺序、票档顺序（从 `1` 开始，按页面从左到右数）
+4. 观演人：默认“已预选”；取消勾选后填写姓名，确认页会按姓名勾选
+5. 点 **保存并启动演练**，确认手机上的场次、票档、观演人正确
+6. 正式使用前勾选底部确认框，再点 **保存并正式提交**
+
+### 4. 停止
+
+- 关掉黑色服务窗口，控制台即停止
+- 手机按返回退出确认页
+
+### 5. 命令行方式（可选）
+
+```powershell
+cd C:\Users\vini vidi vici\Desktop\damai-android-rush-demo
+
+# 演练（不提交）
+.\.venv\Scripts\python.exe -m mobile.damai_app --config config\rehearsal.jsonc
+
+# 正式（会提交订单，不付款）
+.\.venv\Scripts\python.exe -m mobile.damai_app --config config\formal.jsonc
+```
+
+### 6. 候补监控
+
+```powershell
+copy config\waitlist.jsonc.example config\waitlist.jsonc
+notepad config\waitlist.jsonc
+```
+
+至少改这几项：
+
+```jsonc
+"target_date": "2026-11-21",
+"target_price": 688,
+"auto_navigate": true,
+"session_index": 2,
+"price_index": 6
+```
+
+运行：
+
+```powershell
+.\.venv\Scripts\python.exe -m mobile.waitlist_watch --config config\waitlist.jsonc
+```
+
+- 手机先停在票档页
+- 每 3 秒“返回详情 → 重新进票档页”刷新（页面不支持下拉刷新）
+- 命中目标日期/价格后自动走到确认页，弹 Windows 通知
+- 固定 `if_commit_order=false`，**不会提交订单**
+- `Ctrl+C` 停止
+
+详细说明见 [docs/waitlist.md](docs/waitlist.md)。
+
+### 7. 常用检查
+
+```powershell
+check-locator.bat          # 定位自检
+check-locator.bat scan     # 扫描当前页面控件
+check-locator.bat learn    # 校准当前机型
+```
+
 ## 文档
 
 - [新手使用说明](docs/user-guide.md)：按控制台页面一步一步操作
@@ -45,6 +133,7 @@
 - [技术说明](docs/technical-notes.md)：两种模式、时间方案和实现边界
 - [故障排查](docs/troubleshooting.md)：手机、页面和运行异常
 - [多机型控件定位](docs/locator.md)：新增的语义定位层、设备校准和自检
+- [候补监控](docs/waitlist.md)：只读轮询、重进刷新、本地通知和自动导航
 
 ## 多机型定位（新增）
 

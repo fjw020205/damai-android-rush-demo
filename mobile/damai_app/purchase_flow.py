@@ -8,6 +8,7 @@ change).  Hosts the detail→purchase entry path and the fast submit retry loop.
 from __future__ import annotations
 
 import logging
+import os
 import time
 
 from . import (
@@ -124,20 +125,25 @@ class PurchaseFlowMixin:
         if self.config.rush_mode:
             # 极速模式：_cached_tap 冷路径查找并缓存购票按钮坐标，热路径直接点击（1次HTTP）。
             # 点击一次后等足够长时间，避免重复点击重置 sku_page 加载。
-            _buy_clicked = self._cached_tap(
-                "detail_buy",
-                By.ID,
-                "cn.damai:id/trade_project_detail_purchase_status_bar_container_fl",
-                timeout=0.2,
-            )
-            if not _buy_clicked:
-                # 文案集合源 SALE_READY_TEXTS（issue #29）+ 旧文案兜底
+            force_semantic = os.environ.get("DAMAI_FORCE_SEMANTIC_CTA") == "1"
+            if force_semantic:
+                logger.info("强制语义 CTA 测试：跳过 resource-id/文案选择器")
+                _buy_clicked = False
+            else:
                 _buy_clicked = self._cached_tap(
                     "detail_buy",
-                    ANDROID_UIAUTOMATOR,
-                    f'new UiSelector().textMatches("{_SALE_READY_TEXT_REGEX_OR}|.*购票.*|.*抢票.*|.*购买.*")',
-                    timeout=0.25,
+                    By.ID,
+                    "cn.damai:id/trade_project_detail_purchase_status_bar_container_fl",
+                    timeout=0.2,
                 )
+                if not _buy_clicked:
+                    # 文案集合源 SALE_READY_TEXTS（issue #29）+ 旧文案兜底
+                    _buy_clicked = self._cached_tap(
+                        "detail_buy",
+                        ANDROID_UIAUTOMATOR,
+                        f'new UiSelector().textMatches("{_SALE_READY_TEXT_REGEX_OR}|.*购票.*|.*抢票.*|.*购买.*")',
+                        timeout=0.25,
+                    )
             if not _buy_clicked:
                 # Semantic fallback for App builds whose CTA ids/texts changed:
                 # locate the control by page fingerprint + selector instead of

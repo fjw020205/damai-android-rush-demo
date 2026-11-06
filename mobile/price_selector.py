@@ -352,13 +352,28 @@ class PriceSelector:
         if locator is not None:
             try:
                 hits = locator.hits_in(xml_root, "sku_price_card")
-                price_position = self._price_position()
-                if 0 <= price_position < len(hits):
+                if hits:
+                    price_position = self._price_position()
+                    if not (0 <= price_position < len(hits)):
+                        logger.warning(
+                            "price_index=%s 超出 %d 个语义票档卡片，停止选择",
+                            self._config.price_index,
+                            len(hits),
+                        )
+                        return None
+                    hit = hits[price_position]
+                    if self._hit_unavailable(hit):
+                        logger.warning(
+                            "price_index=%s 对应票档为缺货/售罄（%s），停止选择",
+                            self._config.price_index,
+                            self._hit_text(hit)[:40],
+                        )
+                        return None
                     logger.info(
                         "price_index=%d 语义定位命中 (locator)",
                         price_position + 1,
                     )
-                    return hits[price_position].point
+                    return hit.point
             except Exception:
                 logger.debug("语义票档解析失败，回退 XML 容器解析", exc_info=True)
 
@@ -412,6 +427,24 @@ class PriceSelector:
         target_digits = self._extract_price_digits(self._config.price)
         text_digits = self._extract_price_digits(text)
         return target_digits is not None and target_digits == text_digits
+
+    @staticmethod
+    def _hit_text(hit) -> str:
+        """Collect visible text/description of a semantic card hit."""
+        if hit is None or hit.node is None:
+            return ""
+        parts = []
+        for node in hit.node.iter("node"):
+            for attr in ("text", "content-desc"):
+                value = (node.get(attr) or "").strip()
+                if value:
+                    parts.append(value)
+        return " ".join(parts)
+
+    def _hit_unavailable(self, hit) -> bool:
+        """True when a semantic card is marked sold out / registration-only."""
+        text = self._hit_text(hit)
+        return any(marker in text for marker in _PRICE_UNAVAILABLE_TAGS)
 
     def _is_price_option_available(self, option):
         """Return whether a visible price option is actually selectable."""

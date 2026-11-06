@@ -3,6 +3,10 @@
   "poll_interval_ms": 3000,
   // 每轮都下拉刷新（必须开，页面不会自己更新）
   "refresh_each_poll": true,
+  // 连续多少次刷新页面完全没变化后，做一次强力刷新
+  "stale_limit": 3,
+  // 强力刷新也无效时是否重启大麦 App（会回到首页，慎用）
+  "restart_when_stale": false,
   // 关闭每轮刷新后，改用定时刷新（秒），0 表示不刷新
   "refresh_every_s": 0,
   // 同一状态重复通知冷却（秒）

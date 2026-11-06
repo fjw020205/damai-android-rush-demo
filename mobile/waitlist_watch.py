@@ -8,6 +8,7 @@ current page when nothing changed for a while.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import re
 import sys
@@ -75,6 +76,8 @@ def main(argv=None) -> int:
     interval = max(1.0, float(cfg.get("poll_interval_ms", 3000)) / 1000.0)
     refresh_every = float(cfg.get("refresh_every_s", 0) or 0)
     refresh_each_poll = bool(cfg.get("refresh_each_poll", True))
+    stale_limit = max(1, int(cfg.get("stale_limit", 3)))
+    restart_when_stale = bool(cfg.get("restart_when_stale", False))
     cooldown = float(cfg.get("cooldown_s", 30))
     target_date = str(cfg.get("target_date", "") or "")
     target_price = int(cfg.get("target_price", 0) or 0)
@@ -89,6 +92,8 @@ def main(argv=None) -> int:
     last_notify = 0.0
     last_refresh = time.time()
     unchanged = 0
+    last_fp = None
+    same_fp = 0
 
     print(f"开始监控：间隔 {interval:.1f}s，刷新间隔 {refresh_every or '关闭'}s")
     try:
@@ -110,6 +115,36 @@ def main(argv=None) -> int:
                 interval = min(15.0, interval * 1.5)
             else:
                 interval = max(3.0, interval / 1.2)
+
+            fingerprint = hashlib.md5(
+                "|".join(sorted(texts)).encode("utf-8", "ignore")
+            ).hexdigest()
+            if fingerprint == last_fp:
+                same_fp += 1
+            else:
+                same_fp = 0
+                last_fp = fingerprint
+
+            if same_fp >= stale_limit:
+                print(
+                    f"[{time.strftime('%H:%M:%S')}] 连续 {same_fp} 次刷新页面无变化，"
+                    "尝试强力刷新"
+                )
+                try:
+                    device.swipe(0.5, 0.12, 0.5, 0.9, duration=0.35)
+                    time.sleep(0.25)
+                    device.swipe(0.5, 0.12, 0.5, 0.9, duration=0.35)
+                except Exception:
+                    pass
+                if restart_when_stale:
+                    try:
+                        device.app_stop("cn.damai")
+                        time.sleep(1.0)
+                        device.app_start("cn.damai")
+                        print("已重启大麦 App（需要重新进入目标页）")
+                    except Exception:
+                        pass
+                same_fp = 0
 
             if state != last_state:
                 print(f"[{time.strftime('%H:%M:%S')}] 状态: {last_state} -> {state}")

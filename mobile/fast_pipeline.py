@@ -301,14 +301,14 @@ class FastPipeline:
             logger.debug("session panel did not appear before the fast deadline")
             return None
 
-        for attempt in range(2):
+        for attempt in range(3):
             session_coords = self._extract_session_coords(
                 self._bot._dump_hierarchy_xml()
             )
             if session_coords is not None:
                 return session_coords
-            if attempt == 0 and time.time() < panel_deadline:
-                time.sleep(min(0.08, max(0.0, panel_deadline - time.time())))
+            if attempt < 2:
+                time.sleep(0.1)
         logger.debug("session panel appeared without selectable session cards")
         return None
 

@@ -352,6 +352,13 @@ class PriceSelector:
         if locator is not None:
             try:
                 hits = locator.hits_in(xml_root, "sku_price_card")
+                if not hits:
+                    # Page may still be rendering; retry once with a fresh dump.
+                    time.sleep(0.08)
+                    fresh = bot._dump_hierarchy_xml()
+                    if fresh is not None:
+                        xml_root = fresh
+                        hits = locator.hits_in(xml_root, "sku_price_card")
                 if hits:
                     price_position = self._price_position()
                     if not (0 <= price_position < len(hits)):

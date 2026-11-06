@@ -17,9 +17,10 @@ copy config\waitlist.jsonc.example config\waitlist.jsonc
 ## 规则
 
 - 只读页面，不点击购买
+- **每轮下拉刷新**（页面不会主动更新，不刷新读不到新放票）
 - 必须匹配 `target_date`（页面文本包含）
 - 价格必须 ≤ `target_price`，`allow_lower_price` 控制是否接受更低价
-- 连续 `refresh_every_s` 秒无变化才下拉刷新，0 表示不刷新
+- 遇到排队/限流自动退避（3s → 4.5s → 6.7s … 最多 15s）
 - 同一状态 `cooldown_s` 秒内不重复通知
 
 ## 通知

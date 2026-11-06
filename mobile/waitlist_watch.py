@@ -74,6 +74,7 @@ def main(argv=None) -> int:
 
     interval = max(1.0, float(cfg.get("poll_interval_ms", 3000)) / 1000.0)
     refresh_every = float(cfg.get("refresh_every_s", 0) or 0)
+    refresh_each_poll = bool(cfg.get("refresh_each_poll", True))
     cooldown = float(cfg.get("cooldown_s", 30))
     target_date = str(cfg.get("target_date", "") or "")
     target_price = int(cfg.get("target_price", 0) or 0)
@@ -92,10 +93,23 @@ def main(argv=None) -> int:
     print(f"开始监控：间隔 {interval:.1f}s，刷新间隔 {refresh_every or '关闭'}s")
     try:
         while True:
+            # The page does not push updates; a refresh is the only way to
+            # learn about newly released tickets. Back off on throttling.
+            if refresh_each_poll:
+                try:
+                    device.swipe(0.5, 0.25, 0.5, 0.7, duration=0.2)
+                except Exception:
+                    pass
+                time.sleep(0.45)
             root = ET.fromstring(device.dump_hierarchy())
             texts = _texts(root)
             state = detect_state(texts)
             now = time.time()
+
+            if state == "queue":
+                interval = min(15.0, interval * 1.5)
+            else:
+                interval = max(3.0, interval / 1.2)
 
             if state != last_state:
                 print(f"[{time.strftime('%H:%M:%S')}] 状态: {last_state} -> {state}")
@@ -123,7 +137,8 @@ def main(argv=None) -> int:
                     )
 
             if (
-                refresh_every > 0
+                not refresh_each_poll
+                and refresh_every > 0
                 and now - last_refresh >= refresh_every
                 and unchanged >= 3
             ):

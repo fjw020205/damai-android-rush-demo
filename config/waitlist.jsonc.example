@@ -20,6 +20,8 @@
   "allow_lower_price": true,
   // 命中后自动进入确认页（不会提交订单）
   "auto_navigate": true,
+  // 命中后自动提交一次订单（会真实下单，默认关闭；提交后停止监控）
+  "auto_submit": false,
   "session_index": 2,
   "price_index": 6
 }

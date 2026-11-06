@@ -131,9 +131,10 @@ def _reenter_sku(device, session_index: int = 1) -> bool:
 
 
 def _run_confirm_flow(cfg: dict, device) -> tuple[bool, str]:
-    """Run the existing bot in validation mode; never submits the order."""
+    """Navigate to confirm page; optionally submit once when auto_submit is on."""
     root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     config_path = os.path.join(root, "config", "waitlist-confirm.jsonc")
+    auto_submit = bool(cfg.get("auto_submit", False))
     payload = {
         "serial": None,
         "users": [],
@@ -141,7 +142,7 @@ def _run_confirm_flow(cfg: dict, device) -> tuple[bool, str]:
         "price_index": int(cfg.get("price_index", 1)),
         "preselected_sku": False,
         "probe_only": False,
-        "if_commit_order": False,
+        "if_commit_order": auto_submit,
         "skip_attendee_selection": True,
         "skip_quantity_adjustment": True,
         "auto_navigate": False,
@@ -193,7 +194,11 @@ def _run_confirm_flow(cfg: dict, device) -> tuple[bool, str]:
     except Exception:
         pass
     if "DmOrderActivity" in activity:
+        if auto_submit:
+            return False, "提交后仍停在确认页，未确认下单"
         return True, "已到确认页"
+    if auto_submit and result.returncode == 0:
+        return True, "已提交订单，请在手机上付款"
     return False, f"未到确认页（exit={result.returncode}）"
 
 
@@ -213,6 +218,7 @@ def main(argv=None) -> int:
     target_price = int(cfg.get("target_price", 0) or 0)
     allow_lower = bool(cfg.get("allow_lower_price", True))
     auto_navigate = bool(cfg.get("auto_navigate", False))
+    auto_submit = bool(cfg.get("auto_submit", False))
 
     device = u2.connect() if u2 is not None else None
     if device is None:
@@ -323,9 +329,17 @@ def main(argv=None) -> int:
                     if auto_navigate:
                         ok, message = _run_confirm_flow(cfg, device)
                         notify(
-                            "自动导航完成" if ok else "自动导航失败",
+                            "自动提交完成" if auto_submit and ok else (
+                                "自动导航完成" if ok else "自动导航失败"
+                            ),
                             message,
                         )
+                        if auto_submit:
+                            print(
+                                f"[{time.strftime('%H:%M:%S')}] 已尝试提交订单，"
+                                "停止监控（不会重试提交）"
+                            )
+                            return 0
                     last_notify = now
                 else:
                     print(

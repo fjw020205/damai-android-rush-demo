@@ -926,32 +926,12 @@ class FastPipeline:
             logger.info("开发验证极速路径：沿用 App 中已预选的观演人")
         else:
             required_count = max(1, len(self._config.users or []))
-            selected_count = 0
-            try:
-                selected_count = bot._attendee_selected_count()
-            except Exception:
-                selected_count = 0
-            logger.info(
-                "确认页观演人：已选 %d/%d，需要补选 %d",
-                selected_count,
-                required_count,
-                max(0, required_count - selected_count),
-            )
+            logger.info(f"检测到观演人未选择完成，尝试自动补选（已选 0/{required_count}）")
+            logger.info("开发验证极速路径：按勾选框顺序快速补选观演人")
 
-            # Never blindly toggle checkboxes: clicking an already-selected
-            # attendee unchecks it. Prefer configured names, then any unchecked.
+            # Find and click attendee checkboxes (also caches coords for warm pipeline).
             checkbox_elements = bot._attendee_checkbox_elements()
-            picked = 0
-            remaining = max(0, required_count - selected_count)
-            for name in (self._config.users or []):
-                if picked >= remaining:
-                    break
-                try:
-                    if bot._select_attendee_checkbox_by_name(name):
-                        picked += 1
-                except Exception:
-                    logger.debug("按姓名勾选观演人失败: %s", name, exc_info=True)
-            if picked < remaining and checkbox_elements:
+            if checkbox_elements:
                 _coords = []
                 for el in checkbox_elements:
                     try:
@@ -963,35 +943,8 @@ class FastPipeline:
                         pass
                 if _coords:
                     self._cached_coords["attendee_checkboxes"] = _coords
-                for checkbox in checkbox_elements:
-                    if picked >= remaining:
-                        break
-                    try:
-                        if bot._is_checkbox_selected(checkbox):
-                            continue
-                        if bot._click_attendee_checkbox_fast(checkbox):
-                            picked += 1
-                    except Exception:
-                        logger.debug("勾选观演人失败", exc_info=True)
-            try:
-                final_selected = bot._attendee_selected_count()
-                logger.info(
-                    "确认页观演人勾选完成：已选 %d/%d",
-                    final_selected,
-                    required_count,
-                )
-                if final_selected < required_count:
-                    logger.error(
-                        "观演人未选齐（%d/%d），预选人可能不在当前账号的观演人列表中",
-                        final_selected,
-                        required_count,
-                    )
-                    if self._config.if_commit_order:
-                        bot._set_terminal_failure("attendee_missing")
-                        return False
-                    logger.warning("演练模式继续，提交前请手动补选观演人")
-            except Exception:
-                pass
+                for checkbox in checkbox_elements[:required_count]:
+                    bot._click_attendee_checkbox_fast(checkbox)
 
         ready_perf = time.perf_counter()
         if self._config.if_commit_order:

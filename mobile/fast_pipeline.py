@@ -913,7 +913,7 @@ class FastPipeline:
             return False
         if xml is None:
             return False
-        markers = ("提交缺货登记", "缺货登记", "到货通知", "若到货")
+        markers = ("提交缺货登记", "到货通知", "按提交顺序", "若到货")
         return any(
             any(marker in (node.get("text") or "") for marker in markers)
             for node in xml.iter("node")

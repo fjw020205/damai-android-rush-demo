@@ -78,7 +78,7 @@ adb devices
 ### 5. 命令行方式（可选）
 
 ```powershell
-cd C:\Users\vini vidi vici\Desktop\damai-android-rush-demo
+cd C:\Users\vini vidi vici\deepseek-harness\default-workspace\damai-android-rush-demo
 
 # 演练（不提交）
 .\.venv\Scripts\python.exe -m mobile.damai_app --config config\rehearsal.jsonc

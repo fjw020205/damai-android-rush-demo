@@ -122,31 +122,47 @@ WAITLIST_CONFIG = CONFIG_DIR / "waitlist.jsonc"
 WAITLIST_EXAMPLE = CONFIG_DIR / "waitlist.jsonc.example"
 
 
-def _waitlist_auto_submit() -> bool:
+WAITLIST_FIELDS = (
+    "target_date",
+    "target_price",
+    "session_index",
+    "price_index",
+    "auto_navigate",
+    "auto_submit",
+)
+
+
+def _waitlist_values() -> dict[str, Any]:
     path = WAITLIST_CONFIG if WAITLIST_CONFIG.exists() else WAITLIST_EXAMPLE
     try:
-        return bool(_jsonc_load(path).get("auto_submit", False))
+        config = _jsonc_load(path)
     except Exception:
-        return False
+        config = {}
+    return {key: config.get(key) for key in WAITLIST_FIELDS}
 
 
-def _set_waitlist_auto_submit(enabled: bool) -> bool:
+def _update_waitlist(fields: dict[str, Any]) -> dict[str, Any]:
     if not WAITLIST_CONFIG.exists():
         if not WAITLIST_EXAMPLE.exists():
             raise ValueError("缺少候补配置模板")
         shutil.copyfile(WAITLIST_EXAMPLE, WAITLIST_CONFIG)
     text = WAITLIST_CONFIG.read_text(encoding="utf-8")
-    value = "true" if enabled else "false"
-    pattern = re.compile(r'"auto_submit"\s*:\s*(?:true|false)')
-    if pattern.search(text):
-        text = pattern.sub(f'"auto_submit": {value}', text, count=1)
-    else:
-        index = text.rfind("}")
-        if index < 0:
-            raise ValueError("候补配置格式不正确")
-        text = text[:index] + f',\n  "auto_submit": {value}\n' + text[index:]
+    for key, value in fields.items():
+        if key not in WAITLIST_FIELDS:
+            continue
+        encoded = json.dumps(value, ensure_ascii=False)
+        pattern = re.compile(
+            rf'"{key}"\s*:\s*(?:"[^"]*"|true|false|-?\d+)'
+        )
+        if pattern.search(text):
+            text = pattern.sub(f'"{key}": {encoded}', text, count=1)
+        else:
+            index = text.rfind("}")
+            if index < 0:
+                raise ValueError("候补配置格式不正确")
+            text = text[:index] + f',\n  "{key}": {encoded}\n' + text[index:]
     WAITLIST_CONFIG.write_text(text, encoding="utf-8")
-    return enabled
+    return _waitlist_values()
 
 
 def _build_config(action: str, payload: dict[str, Any]) -> tuple[Path, dict[str, Any]]:
@@ -341,7 +357,7 @@ class Handler(BaseHTTPRequestHandler):
         elif parsed.path == "/api/status":
             self._send(HTTPStatus.OK, _status())
         elif parsed.path == "/api/waitlist":
-            self._send(HTTPStatus.OK, {"auto_submit": _waitlist_auto_submit()})
+            self._send(HTTPStatus.OK, _waitlist_values())
         else:
             self._send(HTTPStatus.NOT_FOUND, {"error": "Not found"})
 
@@ -356,12 +372,20 @@ class Handler(BaseHTTPRequestHandler):
                 self._send(HTTPStatus.OK, {"ok": True, "path": str(path.relative_to(ROOT)), "config": config})
                 return
             if parsed.path == "/api/waitlist":
-                enabled = payload.get("auto_submit") is True
-                _set_waitlist_auto_submit(enabled)
-                self._send(
-                    HTTPStatus.OK,
-                    {"ok": True, "auto_submit": enabled},
-                )
+                fields: dict[str, Any] = {}
+                if "target_date" in payload:
+                    fields["target_date"] = str(payload.get("target_date", "")).strip()
+                for key in ("target_price", "session_index", "price_index"):
+                    if key in payload:
+                        value = int(payload.get(key) or 0)
+                        if value < 0:
+                            raise ValueError(f"{key} 不能为负数")
+                        fields[key] = value
+                for key in ("auto_navigate", "auto_submit"):
+                    if key in payload:
+                        fields[key] = payload.get(key) is True
+                values = _update_waitlist(fields)
+                self._send(HTTPStatus.OK, {"ok": True, **values})
                 return
             if parsed.path == "/api/run":
                 action = str(payload.get("action", ""))

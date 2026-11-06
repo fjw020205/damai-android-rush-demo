@@ -89,6 +89,10 @@ cd C:\Users\vini vidi vici\Desktop\damai-android-rush-demo
 
 ### 6. 候补监控
 
+也可以直接在控制台底部 **「候补监控」** 填写目标日期、目标价、场次顺序、票档顺序，勾选是否自动导航/自动提交，点 **「保存候补设置」**，它会写入 `config/waitlist.jsonc`。
+
+命令行方式：
+
 ```powershell
 copy config\waitlist.jsonc.example config\waitlist.jsonc
 notepad config\waitlist.jsonc

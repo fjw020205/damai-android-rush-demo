@@ -173,12 +173,34 @@
 
           <div class="field full" style="margin-top:18px">
             <label>候补监控</label>
+            <div class="field-grid">
+              <div class="field">
+                <label for="wlDate">目标日期 <span class="hint">页面文本包含即可，留空不校验</span></label>
+                <input id="wlDate" type="text" placeholder="2026-11-21" autocomplete="off">
+              </div>
+              <div class="field">
+                <label for="wlPrice">目标价 <span class="hint">只接受 ≤ 此价格</span></label>
+                <input id="wlPrice" type="number" min="0" step="1" value="0">
+              </div>
+              <div class="field">
+                <label for="wlSession">场次顺序</label>
+                <input id="wlSession" type="number" min="1" step="1" value="1">
+              </div>
+              <div class="field">
+                <label for="wlPriceIdx">票档顺序</label>
+                <input id="wlPriceIdx" type="number" min="1" step="1" value="1">
+              </div>
+            </div>
+            <div class="check">
+              <input id="autoNavigate" type="checkbox" checked>
+              <label for="autoNavigate">命中后自动进入确认页<small>不提交订单，只导航。</small></label>
+            </div>
             <div class="check">
               <input id="autoSubmit" type="checkbox">
-              <label for="autoSubmit">候补命中后自动提交订单<small>默认关闭。开启后命中会真实提交一次订单（不付款），随后立即停止监控，不重试提交。</small></label>
+              <label for="autoSubmit">命中后自动提交订单<small>默认关闭。开启后命中会真实提交一次订单（不付款），随后立即停止监控，不重试提交。</small></label>
             </div>
             <div class="notice" style="margin-top:8px">
-              开启前请确认场次、票档、观演人；提交会生成待支付订单并锁定库存，账号可能被风控或限购。仅在你明确要买时开启。
+              开启自动提交前请确认场次、票档、观演人；提交会生成待支付订单并锁定库存，账号可能被风控或限购。仅在你明确要买时开启。
             </div>
             <button id="saveWaitlist" class="action" type="button" style="margin-top:10px">保存候补设置</button>
           </div>
@@ -347,9 +369,14 @@
       try {
         const response = await fetch('/api/waitlist', { cache: 'no-store' });
         const data = await response.json();
+        $('wlDate').value = data.target_date || '';
+        $('wlPrice').value = data.target_price ?? 0;
+        $('wlSession').value = data.session_index ?? 1;
+        $('wlPriceIdx').value = data.price_index ?? 1;
+        $('autoNavigate').checked = data.auto_navigate !== false;
         $('autoSubmit').checked = data.auto_submit === true;
       } catch (error) {
-        // 控制台未连接时保持默认关闭
+        // 控制台未连接时保持默认值
       }
     }
 
@@ -361,11 +388,18 @@
         const response = await fetch('/api/waitlist', {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({auto_submit: $('autoSubmit').checked}),
+          body: JSON.stringify({
+            target_date: $('wlDate').value.trim(),
+            target_price: Number($('wlPrice').value) || 0,
+            session_index: Number($('wlSession').value) || 1,
+            price_index: Number($('wlPriceIdx').value) || 1,
+            auto_navigate: $('autoNavigate').checked,
+            auto_submit: $('autoSubmit').checked,
+          }),
         });
         const result = await response.json();
         if (!response.ok) throw new Error(result.error || '保存失败');
-        showToast(result.auto_submit ? '候补自动提交已开启' : '候补自动提交已关闭');
+        showToast(result.auto_submit ? '候补设置已保存（自动提交开启）' : '候补设置已保存');
       } catch (error) {
         showToast(error.message, true);
       } finally {

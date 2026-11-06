@@ -150,12 +150,12 @@
             <div class="field full">
               <div class="check">
                 <input id="skipAttendee" type="checkbox" checked>
-                <label for="skipAttendee">观演人已在大麦 App 中预选<small>已预选时脚本不会再次打开观演人选择；取消后在下方填写姓名。</small></label>
+                <label for="skipAttendee">预选观演人（自动按姓名勾选）<small>勾选表示沿用大麦里已选的观演人；取消勾选并填写姓名后，脚本会在确认页自动把对应观演人的勾选打上。</small></label>
               </div>
             </div>
             <div id="usersField" class="field full hidden">
-              <label for="users">观演人姓名 <span class="hint">每行一个姓名，必须与大麦 App 中已保存的姓名一致。</span></label>
-              <textarea id="users" placeholder="例如：\n杨新\n沈兵"></textarea>
+              <label for="users">预选观演人姓名 <span class="hint">每行一个，必须与大麦账号里的实名观演人完全一致；找不到时会记录日志并停止正式提交。</span></label>
+              <textarea id="users" placeholder="例如：\n江澳\n付锦文"></textarea>
             </div>
           </div>
 

@@ -6,6 +6,7 @@ Replaces the cascading-timeout approach (SKU 6s + confirm 8s = 14s dead time)
 with a single 5s global deadline shared across all phases.
 """
 
+import os
 import threading
 import time
 import re
@@ -118,6 +119,10 @@ class FastPipeline:
     def _confirm_page_ready(self) -> bool:
         """Detect confirm-page readiness with lighter-weight fallbacks."""
         bot = self._bot
+        # Activity check is a single shell query (~30-50ms) and is much
+        # cheaper than repeated u2 element lookups on the critical path.
+        if "DmOrderActivity" in self._current_focus_activity():
+            return True
         if bot._has_element(By.ID, "cn.damai:id/checkbox"):
             return True
         if bot._attendee_checkbox_elements():
@@ -386,6 +391,10 @@ class FastPipeline:
                 self._bot._click_sku_buy_button_element(burst_count=1)
             check_at = min(local_deadline, time.time() + _ACTION_RETRY_INTERVAL_S)
             while time.time() < check_at:
+                if "DmOrderActivity" in self._current_focus_activity():
+                    self._confirm_ready_perf = time.perf_counter()
+                    logger.info("confirm page ready after %d buy tap(s)", attempts)
+                    return True
                 if self._resource_exists("cn.damai:id/checkbox"):
                     self._confirm_ready_perf = time.perf_counter()
                     logger.info("confirm page ready after %d buy tap(s)", attempts)
@@ -617,6 +626,18 @@ class FastPipeline:
         Returns (buy_clicked: bool).
         """
         bot = self._bot
+        if os.environ.get("DAMAI_FORCE_SEMANTIC_CTA") == "1":
+            semantic = bot._semantic_cta_coords()
+            if semantic is not None:
+                self._cached_coords["detail_buy"] = semantic
+                self._cta_click_perf = time.perf_counter()
+                self._cta_click_wall = time.time()
+                logger.info(
+                    "强制语义 CTA 测试：跳过 resource-id 查找，使用 %s", semantic
+                )
+                batch_shell_taps(self._device, [semantic, semantic])
+                return True
+            logger.warning("强制语义 CTA 未命中，回退默认路径")
         # The exposed resource is a non-clickable Canvas container. Its visual
         # CTA occupies the right side; the geometric center can hit dead space.
         direct_buy_coords = self._resource_center(_DETAIL_CTA_ID, horizontal_ratio=0.75)
@@ -784,6 +805,10 @@ class FastPipeline:
         if not self._select_price_and_quantity(price_coords, global_deadline):
             logger.error("fast path stopped at stage=price_to_quantity")
             return None
+        if self._is_registration_page():
+            logger.warning("检测到缺货登记页，已停止（不会提交缺货登记）")
+            self._bot._set_terminal_failure("sold_out")
+            return False
         logger.info("确定购买...")
 
         # --- Phase 4: state-driven fast taps, then element-based fallbacks ---
@@ -880,6 +905,20 @@ class FastPipeline:
 
         return False
 
+    def _is_registration_page(self) -> bool:
+        """Detect the out-of-stock registration page (缺货登记)."""
+        try:
+            xml = self._bot._dump_hierarchy_xml()
+        except Exception:
+            return False
+        if xml is None:
+            return False
+        markers = ("提交缺货登记", "缺货登记", "到货通知", "若到货")
+        return any(
+            any(marker in (node.get("text") or "") for marker in markers)
+            for node in xml.iter("node")
+        )
+
     def _finish_confirm(self, start_time):
         """Shared tail for the cold pipeline: optionally select attendees."""
         bot = self._bot
@@ -887,12 +926,32 @@ class FastPipeline:
             logger.info("开发验证极速路径：沿用 App 中已预选的观演人")
         else:
             required_count = max(1, len(self._config.users or []))
-            logger.info(f"检测到观演人未选择完成，尝试自动补选（已选 0/{required_count}）")
-            logger.info("开发验证极速路径：按勾选框顺序快速补选观演人")
+            selected_count = 0
+            try:
+                selected_count = bot._attendee_selected_count()
+            except Exception:
+                selected_count = 0
+            logger.info(
+                "确认页观演人：已选 %d/%d，需要补选 %d",
+                selected_count,
+                required_count,
+                max(0, required_count - selected_count),
+            )
 
-            # Find and click attendee checkboxes (also caches coords for warm pipeline).
+            # Never blindly toggle checkboxes: clicking an already-selected
+            # attendee unchecks it. Prefer configured names, then any unchecked.
             checkbox_elements = bot._attendee_checkbox_elements()
-            if checkbox_elements:
+            picked = 0
+            remaining = max(0, required_count - selected_count)
+            for name in (self._config.users or []):
+                if picked >= remaining:
+                    break
+                try:
+                    if bot._select_attendee_checkbox_by_name(name):
+                        picked += 1
+                except Exception:
+                    logger.debug("按姓名勾选观演人失败: %s", name, exc_info=True)
+            if picked < remaining and checkbox_elements:
                 _coords = []
                 for el in checkbox_elements:
                     try:
@@ -904,8 +963,35 @@ class FastPipeline:
                         pass
                 if _coords:
                     self._cached_coords["attendee_checkboxes"] = _coords
-                for checkbox in checkbox_elements[:required_count]:
-                    bot._click_attendee_checkbox_fast(checkbox)
+                for checkbox in checkbox_elements:
+                    if picked >= remaining:
+                        break
+                    try:
+                        if bot._is_checkbox_selected(checkbox):
+                            continue
+                        if bot._click_attendee_checkbox_fast(checkbox):
+                            picked += 1
+                    except Exception:
+                        logger.debug("勾选观演人失败", exc_info=True)
+            try:
+                final_selected = bot._attendee_selected_count()
+                logger.info(
+                    "确认页观演人勾选完成：已选 %d/%d",
+                    final_selected,
+                    required_count,
+                )
+                if final_selected < required_count:
+                    logger.error(
+                        "观演人未选齐（%d/%d），预选人可能不在当前账号的观演人列表中",
+                        final_selected,
+                        required_count,
+                    )
+                    if self._config.if_commit_order:
+                        bot._set_terminal_failure("attendee_missing")
+                        return False
+                    logger.warning("演练模式继续，提交前请手动补选观演人")
+            except Exception:
+                pass
 
         ready_perf = time.perf_counter()
         if self._config.if_commit_order:
@@ -997,9 +1083,13 @@ class FastPipeline:
                 logger.info("选择票价...")
                 logger.info(f"通过配置索引直接选择票价: price_index={self._config.price_index}")
                 logger.info("选择数量...")
-                logger.info("确定购买...")
                 if price is None:
                     return None
+                if self._is_registration_page():
+                    logger.warning("检测到缺货登记页，已停止（不会提交缺货登记）")
+                    self._bot._set_terminal_failure("sold_out")
+                    return False
+                logger.info("确定购买...")
                 confirmed = self._shell_price_and_buy_until_confirm(
                     price, sku_buy, deadline
                 )

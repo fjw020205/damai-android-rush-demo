@@ -89,6 +89,23 @@ def _run_confirm_flow(cfg: dict, device) -> tuple[bool, str]:
         "fast_retry_count": 1,
         "fast_retry_interval_ms": 80,
     }
+
+    # The bot starts from the detail page; normalise the current screen first.
+    try:
+        activity = (device.app_current() or {}).get("activity", "") or ""
+    except Exception:
+        activity = ""
+    if "DmOrderActivity" in activity:
+        return True, "已经在确认页"
+    if "NcovSkuActivity" in activity:
+        try:
+            device.press("back")
+            time.sleep(1.0)
+            activity = (device.app_current() or {}).get("activity", "") or ""
+        except Exception:
+            pass
+    if "ProjectDetailActivity" not in activity:
+        return False, "当前不在演出详情页，请先手动打开详情页"
     with open(config_path, "w", encoding="utf-8") as handle:
         json.dump(payload, handle, ensure_ascii=False, indent=2)
 

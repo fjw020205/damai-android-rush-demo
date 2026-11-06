@@ -114,7 +114,7 @@ def _strip_jsonc_comments(text):
 
 def _load_config_dict_from_path(path):
     try:
-        with open(path, "r", encoding="utf-8") as config_file:
+        with open(path, "r", encoding="utf-8-sig") as config_file:
             raw_text = config_file.read()
     except FileNotFoundError:
         raise FileNotFoundError(f"配置文件未找到: {path}")
@@ -571,7 +571,7 @@ def update_config_values(updates, config_path=None):
     if not updates:
         return {}, {}
     with _config_write_lock(resolved_path):
-        with open(resolved_path, "r", encoding="utf-8", newline="") as config_file:
+        with open(resolved_path, "r", encoding="utf-8-sig", newline="") as config_file:
             original_text = config_file.read()
         try:
             previous_parsed = json.loads(_strip_jsonc_comments_scanned(original_text))

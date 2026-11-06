@@ -31,7 +31,7 @@ QUEUE_TEXTS = ("人数过多", "排队中", "系统繁忙", "请稍后")
 
 
 def _load_jsonc(path: str) -> dict:
-    raw = open(path, encoding="utf-8").read()
+    raw = open(path, encoding="utf-8-sig").read()
     raw = re.sub(r"//.*", "", raw)
     raw = re.sub(r"/\*.*?\*/", "", raw, flags=re.S)
     raw = re.sub(r",\s*([}\]])", r"\1", raw)

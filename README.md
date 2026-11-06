@@ -100,6 +100,7 @@ notepad config\waitlist.jsonc
 "target_date": "2026-11-21",
 "target_price": 688,
 "auto_navigate": true,
+"auto_submit": false,
 "session_index": 2,
 "price_index": 6
 ```
@@ -113,8 +114,36 @@ notepad config\waitlist.jsonc
 - 手机先停在票档页
 - 每 3 秒“返回详情 → 重新进票档页”刷新（页面不支持下拉刷新）
 - 命中目标日期/价格后自动走到确认页，弹 Windows 通知
-- 固定 `if_commit_order=false`，**不会提交订单**
+- 默认 `auto_submit=false`：停在确认页，**不会提交订单**
 - `Ctrl+C` 停止
+
+#### 自动提交（可选，默认关闭）
+
+默认不会提交。需要自动提交时，把配置改成：
+
+```jsonc
+"auto_submit": true
+```
+
+保存后重新运行：
+
+```powershell
+.\.venv\Scripts\python.exe -m mobile.waitlist_watch --config config\waitlist.jsonc
+```
+
+开启后的行为：
+
+1. 命中可购买 → 自动进确认页
+2. 点一次「立即提交」，生成待支付订单
+3. 无论成功失败，**立即停止监控**，不会重试提交
+4. 弹通知：已提交，请手动付款
+
+风险：
+
+- 会生成真实订单，锁库存，超时自动取消
+- 不付款也会留下订单记录，频繁操作可能被风控/限购
+- 提交前请确认日期、价格、场次、观演人
+- 平台条款风险由使用者自行承担
 
 详细说明见 [docs/waitlist.md](docs/waitlist.md)。
 

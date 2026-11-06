@@ -1,0 +1,145 @@
+# -*- coding: UTF-8 -*-
+"""Waitlist watcher: read-only page polling + local notifications.
+
+It never taps purchase buttons.  Optional pull-to-refresh only reloads the
+current page when nothing changed for a while.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import re
+import sys
+import time
+import xml.etree.ElementTree as ET
+
+from mobile.notify import notify
+
+try:
+    import uiautomator2 as u2
+except ModuleNotFoundError:  # pragma: no cover
+    u2 = None
+
+
+AVAILABLE_TEXTS = ("可候补", "立即购买", "立即购票", "有票", "立即预订", "立即预定")
+UNAVAILABLE_TEXTS = ("缺货登记", "售罄", "无票", "即将开抢")
+QUEUE_TEXTS = ("人数过多", "排队中", "系统繁忙", "请稍后")
+
+
+def _load_jsonc(path: str) -> dict:
+    raw = open(path, encoding="utf-8").read()
+    raw = re.sub(r"//.*", "", raw)
+    raw = re.sub(r"/\*.*?\*/", "", raw, flags=re.S)
+    raw = re.sub(r",\s*([}\]])", r"\1", raw)
+    return json.loads(raw)
+
+
+def _texts(root: ET.Element) -> list[str]:
+    values = []
+    for node in root.iter("node"):
+        for attr in ("text", "content-desc"):
+            value = (node.get(attr) or "").strip()
+            if value:
+                values.append(value)
+    return values
+
+
+def _match_price(text: str, target: int, allow_lower: bool) -> bool:
+    digits = re.findall(r"(\d{2,5})", text)
+    prices = [int(item) for item in digits if 100 <= int(item) <= 9999]
+    if not prices:
+        return False
+    if any(price == target for price in prices):
+        return True
+    return allow_lower and any(price < target for price in prices)
+
+
+def detect_state(texts: list[str]) -> str:
+    joined = " ".join(texts)
+    if any(marker in joined for marker in QUEUE_TEXTS):
+        return "queue"
+    if any(marker in joined for marker in UNAVAILABLE_TEXTS):
+        return "unavailable"
+    if any(marker in joined for marker in AVAILABLE_TEXTS):
+        return "available"
+    return "unknown"
+
+
+def main(argv=None) -> int:
+    parser = argparse.ArgumentParser(description="候补/放票监控（只读）")
+    parser.add_argument("--config", required=True)
+    args = parser.parse_args(argv)
+    cfg = _load_jsonc(args.config)
+
+    interval = max(1.0, float(cfg.get("poll_interval_ms", 3000)) / 1000.0)
+    refresh_every = float(cfg.get("refresh_every_s", 0) or 0)
+    cooldown = float(cfg.get("cooldown_s", 30))
+    target_date = str(cfg.get("target_date", "") or "")
+    target_price = int(cfg.get("target_price", 0) or 0)
+    allow_lower = bool(cfg.get("allow_lower_price", True))
+
+    device = u2.connect() if u2 is not None else None
+    if device is None:
+        print("uiautomator2 不可用")
+        return 2
+
+    last_state = None
+    last_notify = 0.0
+    last_refresh = time.time()
+    unchanged = 0
+
+    print(f"开始监控：间隔 {interval:.1f}s，刷新间隔 {refresh_every or '关闭'}s")
+    try:
+        while True:
+            root = ET.fromstring(device.dump_hierarchy())
+            texts = _texts(root)
+            state = detect_state(texts)
+            now = time.time()
+
+            if state != last_state:
+                print(f"[{time.strftime('%H:%M:%S')}] 状态: {last_state} -> {state}")
+                last_state = state
+                unchanged = 0
+            else:
+                unchanged += 1
+
+            if state == "available" and now - last_notify >= cooldown:
+                joined = " ".join(texts)
+                date_ok = (not target_date) or (target_date in joined)
+                price_ok = target_price <= 0 or _match_price(
+                    joined, target_price, allow_lower
+                )
+                if date_ok and price_ok:
+                    notify(
+                        "大麦：检测到可购买",
+                        f"日期匹配={date_ok} 价格匹配={price_ok}，请打开手机确认",
+                    )
+                    last_notify = now
+                else:
+                    print(
+                        f"[{time.strftime('%H:%M:%S')}] 可购买但目标不匹配 "
+                        f"date={date_ok} price={price_ok}"
+                    )
+
+            if (
+                refresh_every > 0
+                and now - last_refresh >= refresh_every
+                and unchanged >= 3
+            ):
+                print("下拉刷新当前页面")
+                try:
+                    device.swipe(0.5, 0.25, 0.5, 0.75, duration=0.25)
+                except Exception:
+                    pass
+                last_refresh = now
+                unchanged = 0
+
+            time.sleep(interval)
+    except KeyboardInterrupt:
+        print("已停止")
+        return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

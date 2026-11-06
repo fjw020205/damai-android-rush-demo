@@ -58,6 +58,32 @@ def _match_price(text: str, target: int, allow_lower: bool) -> bool:
     return allow_lower and any(price < target for price in prices)
 
 
+def _price_cards(root: ET.Element) -> list[dict]:
+    """Return price cards (visible order) with their availability tags."""
+    parent_map = {child: parent for parent in root.iter("node") for child in parent}
+    cards = []
+    for node in root.iter("node"):
+        if not (node.get("resource-id") or "").endswith("ll_perform_item"):
+            continue
+        ancestor = parent_map.get(node)
+        in_price = False
+        while ancestor is not None:
+            if (ancestor.get("resource-id") or "").endswith(
+                "project_detail_perform_price_flowlayout"
+            ):
+                in_price = True
+                break
+            ancestor = parent_map.get(ancestor)
+        if not in_price:
+            continue
+        tag = ""
+        for child in node.iter("node"):
+            if (child.get("resource-id") or "").endswith("tv_tag"):
+                tag = (child.get("text") or "").strip()
+        cards.append({"tag": tag})
+    return cards
+
+
 def detect_state(texts: list[str]) -> str:
     joined = " ".join(texts)
     if any(marker in joined for marker in QUEUE_TEXTS):
@@ -179,6 +205,21 @@ def main(argv=None) -> int:
             root = ET.fromstring(device.dump_hierarchy())
             texts = _texts(root)
             state = detect_state(texts)
+            try:
+                activity = (device.app_current() or {}).get("activity", "") or ""
+            except Exception:
+                activity = ""
+            sku_available = False
+            if "NcovSkuActivity" in activity:
+                cards = _price_cards(root)
+                idx = int(cfg.get("price_index", 1)) - 1
+                if 0 <= idx < len(cards):
+                    tag = cards[idx].get("tag", "")
+                    if tag and any(marker in tag for marker in UNAVAILABLE_TEXTS):
+                        state = "unavailable"
+                    else:
+                        state = "available"
+                        sku_available = True
             now = time.time()
 
             if state == "queue":
@@ -229,6 +270,9 @@ def main(argv=None) -> int:
                 price_ok = target_price <= 0 or _match_price(
                     joined, target_price, allow_lower
                 )
+                if sku_available:
+                    date_ok = True
+                    price_ok = True
                 if date_ok and price_ok:
                     notify(
                         "大麦：检测到可购买",

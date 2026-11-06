@@ -346,37 +346,6 @@ class PriceSelector:
         if xml_root is None:
             return None
 
-        # Fast path: one scoped XPath query instead of a full hierarchy dump.
-        device = (
-            getattr(bot, "_device", None)
-            or getattr(bot, "d", None)
-            or getattr(bot, "driver", None)
-        )
-        if device is not None:
-            try:
-                cards = device.xpath(
-                    '//*[@resource-id="cn.damai:id/project_detail_perform_price_flowlayout"]'
-                    '//*[@resource-id="cn.damai:id/ll_perform_item"]'
-                ).all()
-                position = self._price_position()
-                if cards and 0 <= position < len(cards):
-                    card = cards[position]
-                    text = card.get_text() or ""
-                    if any(marker in text for marker in _PRICE_UNAVAILABLE_TAGS):
-                        logger.warning(
-                            "price_index=%s 对应票档为缺货/售罄，停止选择",
-                            self._config.price_index,
-                        )
-                        return None
-                    center = card.center()
-                    logger.info(
-                        "price_index=%d 文本查询命中 (xpath)",
-                        position + 1,
-                    )
-                    return (int(center[0]), int(center[1]))
-            except Exception:
-                logger.debug("票档 XPath 查询失败，回退 XML 解析", exc_info=True)
-
         # Semantic cards first: the spec resolves the same visible order as the
         # UI (top-to-bottom, left-to-right) without depending on class names.
         locator = getattr(bot, "_locator", None)

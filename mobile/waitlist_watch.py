@@ -95,6 +95,41 @@ def detect_state(texts: list[str]) -> str:
     return "unknown"
 
 
+def _reenter_sku(device, session_index: int = 1) -> bool:
+    """Reload the SKU page by going back to detail and tapping the CTA."""
+    try:
+        activity = (device.app_current() or {}).get("activity", "") or ""
+    except Exception:
+        return False
+    if "DmOrderActivity" in activity:
+        return False
+    if "NcovSkuActivity" in activity:
+        try:
+            device.press("back")
+            time.sleep(0.9)
+        except Exception:
+            return False
+    try:
+        activity = (device.app_current() or {}).get("activity", "") or ""
+    except Exception:
+        activity = ""
+    if "ProjectDetailActivity" not in activity:
+        return False
+    try:
+        from mobile.locator import Locator
+
+        locator = Locator(device)
+        locator.tap("detail_cta")
+        time.sleep(1.2)
+        sessions = locator.resolve_all("sku_session_card")
+        if sessions and 1 <= session_index <= len(sessions):
+            device.click(*sessions[session_index - 1].point)
+            time.sleep(1.0)
+    except Exception:
+        return False
+    return True
+
+
 def _run_confirm_flow(cfg: dict, device) -> tuple[bool, str]:
     """Run the existing bot in validation mode; never submits the order."""
     root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -197,10 +232,17 @@ def main(argv=None) -> int:
             # The page does not push updates; a refresh is the only way to
             # learn about newly released tickets. Back off on throttling.
             if refresh_each_poll:
-                try:
-                    device.swipe(0.5, 0.25, 0.5, 0.7, duration=0.2)
-                except Exception:
-                    pass
+                mode = str(cfg.get("refresh_mode", "reenter"))
+                refreshed = False
+                if mode == "reenter":
+                    refreshed = _reenter_sku(
+                        device, int(cfg.get("session_index", 1))
+                    )
+                if not refreshed:
+                    try:
+                        device.swipe(0.5, 0.25, 0.5, 0.7, duration=0.2)
+                    except Exception:
+                        pass
                 time.sleep(0.45)
             root = ET.fromstring(device.dump_hierarchy())
             texts = _texts(root)
